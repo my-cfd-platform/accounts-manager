@@ -1,0 +1,76 @@
+syntax = "proto3";
+package accounts_manager;
+
+enum AccountsManagerOperationResult{
+    Ok = 0;
+    AccountNotFound = 1;
+    TraderNotFound = 2;
+    NotEnoughBalance = 3;
+}
+
+message AccountGrpcModel{
+    string Id = 1;
+    string TraderId = 2;
+    string Currency = 3;
+    double Balance = 4;
+    uint64 CreateDate = 5;
+    uint64 LastUpdateDate = 6;
+    bool TradingDisabled = 7;
+    string CreateProcessId = 8;
+    string TradingGroup = 9;
+    string LastUpdateProcessId = 10;
+}
+
+message AccountManagerCreateAccountGrpcRequest{
+    string TraderId = 1;
+    string Currency = 2;
+    string ProcessId = 3;
+}
+
+message AccountManagerUpdateAccountBalanceGrpcRequest{
+     string TraderId = 1;
+     string AccountId = 2;
+     double Delta = 3;
+     string Comment = 4;
+     string ProcessId = 5;
+     bool AllowNegativeBalance = 6;
+}
+
+message AccountManagerGetClientAccountGrpcRequest{
+    string TraderId = 1;
+    string AccountId = 2;
+}
+
+message AccountManagerGetClientAccountsGrpcRequest{
+    string TraderId = 1;
+}
+
+message AccountManagerUpdateTradingDisabledGrpcRequest{
+    string TraderId = 1;
+    string AccountId = 2;
+    bool TradingDisabled = 3;
+    string ProcessId = 4;
+}
+
+message AccountManagerUpdateTradingDisabledGrpcResponse{
+    accounts_manager.AccountsManagerOperationResult Result = 1;
+    optional accounts_manager.AccountGrpcModel Account = 2;
+}
+
+message AccountManagerUpdateAccountBalanceGrpcResponse{
+    accounts_manager.AccountsManagerOperationResult Result = 1;
+    optional accounts_manager.AccountGrpcModel Account = 2;
+}
+
+message AccountManagerGetClientAccountGrpcResponse{
+    accounts_manager.AccountsManagerOperationResult Result = 1;
+    optional accounts_manager.AccountGrpcModel Account = 2;
+}
+
+service AccountsManagerGrpcService {
+    rpc CreateAccount(accounts_manager.AccountManagerCreateAccountGrpcRequest) returns (accounts_manager.AccountGrpcModel);
+    rpc GetClientAccount(accounts_manager.AccountManagerGetClientAccountGrpcRequest) returns (accounts_manager.AccountManagerGetClientAccountGrpcResponse);
+    rpc GetClientAccounts(accounts_manager.AccountManagerGetClientAccountsGrpcRequest) returns (stream accounts_manager.AccountGrpcModel);
+    rpc UpdateClientAccountBalance(accounts_manager.AccountManagerUpdateAccountBalanceGrpcRequest) returns (accounts_manager.AccountManagerUpdateAccountBalanceGrpcResponse);
+    rpc UpdateAccountTradingDisabled(accounts_manager.AccountManagerUpdateTradingDisabledGrpcRequest) returns (accounts_manager.AccountManagerUpdateTradingDisabledGrpcResponse);
+}
