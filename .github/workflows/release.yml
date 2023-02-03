@@ -4,7 +4,7 @@ on:
     tags: ["*"]
 
 env:
-  IMAGE_NAME: my-cfd-platform/accounts-manager
+  IMAGE_NAME: mycfdplatform/accounts-manager
 
 jobs:
   build:
