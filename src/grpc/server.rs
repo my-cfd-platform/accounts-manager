@@ -1,5 +1,5 @@
-use crate::{AppContext};
 use crate::accounts_manager::accounts_manager_grpc_service_server::AccountsManagerGrpcServiceServer;
+use crate::AppContext;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tonic::transport::Server;

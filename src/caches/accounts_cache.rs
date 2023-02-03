@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use tokio::sync::RwLock;
 
-use crate::{Account};
+use crate::Account;
 
 #[derive(Debug)]
 pub enum OperationError {
@@ -12,7 +12,7 @@ pub enum OperationError {
 }
 
 impl OperationError {
-    pub fn as_grpc_error(&self) -> i32{
+    pub fn as_grpc_error(&self) -> i32 {
         match self {
             OperationError::TraderNotFound => 2,
             OperationError::AccountNofFound => 1,

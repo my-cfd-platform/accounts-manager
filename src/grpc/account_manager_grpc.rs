@@ -8,7 +8,9 @@ use crate::{
         AccountManagerCreateAccountGrpcRequest, AccountManagerGetClientAccountGrpcRequest,
         AccountManagerGetClientAccountGrpcResponse, AccountManagerGetClientAccountsGrpcRequest,
         AccountManagerUpdateAccountBalanceGrpcRequest,
-        AccountManagerUpdateAccountBalanceGrpcResponse, AccountManagerUpdateTradingDisabledGrpcRequest, AccountManagerUpdateTradingDisabledGrpcResponse,
+        AccountManagerUpdateAccountBalanceGrpcResponse,
+        AccountManagerUpdateTradingDisabledGrpcRequest,
+        AccountManagerUpdateTradingDisabledGrpcResponse,
     },
     Account,
 };
@@ -119,12 +121,12 @@ impl AccountsManagerGrpcService for GrpcService {
             )
             .await;
 
-        let response = match update_balance_result{
-            Ok(account) => AccountManagerUpdateAccountBalanceGrpcResponse{
+        let response = match update_balance_result {
+            Ok(account) => AccountManagerUpdateAccountBalanceGrpcResponse {
                 result: 0,
                 account: Some(account.into()),
             },
-            Err(error) => AccountManagerUpdateAccountBalanceGrpcResponse{
+            Err(error) => AccountManagerUpdateAccountBalanceGrpcResponse {
                 result: error.as_grpc_error(),
                 account: None,
             },
@@ -151,12 +153,12 @@ impl AccountsManagerGrpcService for GrpcService {
             )
             .await;
 
-        let response = match update_balance_result{
-            Ok(account) => AccountManagerUpdateTradingDisabledGrpcResponse{
+        let response = match update_balance_result {
+            Ok(account) => AccountManagerUpdateTradingDisabledGrpcResponse {
                 result: 0,
                 account: Some(account.into()),
             },
-            Err(error) => AccountManagerUpdateTradingDisabledGrpcResponse{
+            Err(error) => AccountManagerUpdateTradingDisabledGrpcResponse {
                 result: error.as_grpc_error(),
                 account: None,
             },
@@ -164,5 +166,4 @@ impl AccountsManagerGrpcService for GrpcService {
 
         Ok(tonic::Response::new(response))
     }
-
 }
