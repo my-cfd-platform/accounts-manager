@@ -4,7 +4,6 @@ on:
     tags: ["*"]
 
 env:
-  REGISTRY: ghcr.io
   IMAGE_NAME: my-cfd-platform/accounts-manager
 
 jobs:
@@ -32,9 +31,9 @@ jobs:
           DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASS: ${{ secrets.DOCKER_PASSWORD }}
         run: |          
-          echo "$DOCKER_PASS" | docker login --username "$DOCKER_USER" ${REGISTRY} --password-stdin   
+          echo "$DOCKER_PASS" | docker login --username "$DOCKER_USER" --password-stdin   
       - name: Docker Build and Publish
         run: |          
-          docker build -t ${REGISTRY}/${IMAGE_NAME}:${{ steps.get_version.outputs.VERSION }} .
-          docker push ${REGISTRY}/${IMAGE_NAME}:${{ steps.get_version.outputs.VERSION }}
+          docker build -t ${IMAGE_NAME}:${{ steps.get_version.outputs.VERSION }} .
+          docker push ${IMAGE_NAME}:${{ steps.get_version.outputs.VERSION }}
 
