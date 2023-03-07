@@ -12,7 +12,7 @@ use crate::{
         AccountManagerUpdateTradingDisabledGrpcRequest,
         AccountManagerUpdateTradingDisabledGrpcResponse,
     },
-    Account,
+    Account, PersistAccountQueueItem,
 };
 
 use super::server::GrpcService;
@@ -32,9 +32,6 @@ impl AccountsManagerGrpcService for GrpcService {
         &self,
         request: tonic::Request<AccountManagerCreateAccountGrpcRequest>,
     ) -> Result<tonic::Response<AccountGrpcModel>, tonic::Status> {
-        // let my_telemetry =
-        //     my_grpc_extensions::get_telemetry(&request.metadata(), request.remote_addr(), "swap");
-
         let request = request.into_inner();
 
         let date = chrono::offset::Utc::now().timestamp_millis() as u64;
@@ -51,9 +48,15 @@ impl AccountsManagerGrpcService for GrpcService {
             trading_group: self.app.settings.default_account_trading_group.clone(),
         };
 
-        self.app
+        let account = self
+            .app
             .accounts_cache
             .add_account(account_to_insert.clone())
+            .await;
+
+        self.app
+            .accounts_persist_queue
+            .enqueue(PersistAccountQueueItem::CreateAccount(account))
             .await;
 
         return Ok(tonic::Response::new(account_to_insert.into()));
@@ -122,10 +125,17 @@ impl AccountsManagerGrpcService for GrpcService {
             .await;
 
         let response = match update_balance_result {
-            Ok(account) => AccountManagerUpdateAccountBalanceGrpcResponse {
-                result: 0,
-                account: Some(account.into()),
-            },
+            Ok(account) => {
+                self.app
+                    .accounts_persist_queue
+                    .enqueue(PersistAccountQueueItem::UpdateAccount(account.clone()))
+                    .await;
+
+                AccountManagerUpdateAccountBalanceGrpcResponse {
+                    result: 0,
+                    account: Some(account.into()),
+                }
+            }
             Err(error) => AccountManagerUpdateAccountBalanceGrpcResponse {
                 result: error.as_grpc_error(),
                 account: None,
@@ -154,10 +164,16 @@ impl AccountsManagerGrpcService for GrpcService {
             .await;
 
         let response = match update_balance_result {
-            Ok(account) => AccountManagerUpdateTradingDisabledGrpcResponse {
-                result: 0,
-                account: Some(account.into()),
-            },
+            Ok(account) => {
+                self.app
+                    .accounts_persist_queue
+                    .enqueue(PersistAccountQueueItem::UpdateAccount(account.clone()))
+                    .await;
+                AccountManagerUpdateTradingDisabledGrpcResponse {
+                    result: 0,
+                    account: Some(account.into()),
+                }
+            }
             Err(error) => AccountManagerUpdateTradingDisabledGrpcResponse {
                 result: error.as_grpc_error(),
                 account: None,

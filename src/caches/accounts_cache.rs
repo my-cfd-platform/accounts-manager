@@ -42,12 +42,14 @@ impl AccountsStore {
         return Some(trader_accounts.values().collect());
     }
 
-    pub fn add_account(&mut self, account: Account) {
+    pub fn add_account(&mut self, account: Account) -> Account {
         let trader_accounts = self
             .accounts
             .entry(account.trader_id.clone())
             .or_insert(HashMap::new());
-        trader_accounts.insert(account.id.clone(), account);
+        trader_accounts.insert(account.id.clone(), account.clone());
+
+        return account;
     }
 
     pub fn update_balace(
@@ -143,9 +145,9 @@ impl AccountsCache {
         return Some(result);
     }
 
-    pub async fn add_account(&self, account: Account) {
+    pub async fn add_account(&self, account: Account) -> Account {
         let mut accounts_store = self.accounts_store.write().await;
-        accounts_store.add_account(account);
+        return accounts_store.add_account(account);
     }
 
     pub async fn update_balance(
