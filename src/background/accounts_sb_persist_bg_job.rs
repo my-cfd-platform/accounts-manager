@@ -41,5 +41,7 @@ impl MyTimerTick for AccountsSbPersistBgJob {
             .publish_messages(&messages_to_publish)
             .await
             .unwrap();
+
+        print!("Done publishing messages. Len: {}", messages_to_publish.len());
     }
 }

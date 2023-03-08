@@ -23,9 +23,9 @@ async fn main() {
     );
 
     start_grpc_server(app.clone(), 8888).await;
-    app.sb_client.start().await;
     sb_queue_processing_timer.start(app.app_states.clone(), my_logger::LOGGER.clone());
     queue_persist_timer.start(app.app_states.clone(), my_logger::LOGGER.clone());
-
+    
+    app.sb_client.start().await;
     app.app_states.wait_until_shutdown().await;
 }

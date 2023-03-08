@@ -18,5 +18,6 @@ impl PersistSbQueueJob {
 impl MyTimerTick for PersistSbQueueJob {
     async fn tick(&self) {
         self.app.accounts_persist_queue.force_persist().await;
+        print!("Done persist job.");
     }
 }
