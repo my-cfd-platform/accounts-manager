@@ -43,6 +43,7 @@ impl AppContext {
         )
         .await;
         let accounts = accounts_persistence_grpc.get_accounts().await;
+        println!("Load {} accounts from persistence", accounts.len());
         Self {
             accounts_cache: Arc::new(AccountsCache::new(accounts)),
             settings,
