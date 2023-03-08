@@ -1,5 +1,6 @@
 use std::pin::Pin;
 
+use engine_sb_contracts::AccountPersistEvent;
 use uuid::Uuid;
 
 use crate::{
@@ -12,7 +13,7 @@ use crate::{
         AccountManagerUpdateTradingDisabledGrpcRequest,
         AccountManagerUpdateTradingDisabledGrpcResponse,
     },
-    Account, PersistAccountQueueItem,
+    Account,
 };
 
 use super::server::GrpcService;
@@ -55,9 +56,13 @@ impl AccountsManagerGrpcService for GrpcService {
             .await;
 
         self.app
-            .accounts_persist_queue
-            .enqueue(PersistAccountQueueItem::CreateAccount(account))
-            .await;
+            .account_persist_events_publisher
+            .publish(&AccountPersistEvent {
+                add_account_event: Some(account.clone().into()),
+                update_account_event: None,
+            })
+            .await
+            .unwrap();
 
         return Ok(tonic::Response::new(account_to_insert.into()));
     }
@@ -127,9 +132,13 @@ impl AccountsManagerGrpcService for GrpcService {
         let response = match update_balance_result {
             Ok(account) => {
                 self.app
-                    .accounts_persist_queue
-                    .enqueue(PersistAccountQueueItem::UpdateAccount(account.clone()))
-                    .await;
+                    .account_persist_events_publisher
+                    .publish(&AccountPersistEvent {
+                        add_account_event: None,
+                        update_account_event: Some(account.clone().into()),
+                    })
+                    .await
+                    .unwrap();
 
                 AccountManagerUpdateAccountBalanceGrpcResponse {
                     result: 0,
@@ -166,9 +175,13 @@ impl AccountsManagerGrpcService for GrpcService {
         let response = match update_balance_result {
             Ok(account) => {
                 self.app
-                    .accounts_persist_queue
-                    .enqueue(PersistAccountQueueItem::UpdateAccount(account.clone()))
-                    .await;
+                    .account_persist_events_publisher
+                    .publish(&AccountPersistEvent {
+                        add_account_event: None,
+                        update_account_event: Some(account.clone().into()),
+                    })
+                    .await
+                    .unwrap();
                 AccountManagerUpdateTradingDisabledGrpcResponse {
                     result: 0,
                     account: Some(account.into()),
