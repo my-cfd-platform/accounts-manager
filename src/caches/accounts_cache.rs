@@ -26,7 +26,16 @@ pub struct AccountsStore {
 }
 
 impl AccountsStore {
-    pub fn new() -> Self {
+    pub fn new(accounts: Vec<Account>) -> Self {
+        let mut accounts_cache = HashMap::new();
+
+        for account in accounts {
+            accounts_cache
+                .entry(account.trader_id.clone())
+                .or_insert(HashMap::new())
+                .insert(account.id.clone(), account);
+        }
+
         Self {
             accounts: HashMap::new(),
         }
@@ -119,9 +128,9 @@ pub struct AccountsCache {
 }
 
 impl AccountsCache {
-    pub fn new() -> Self {
+    pub fn new(accounts: Vec<Account>) -> Self {
         AccountsCache {
-            accounts_store: RwLock::new(AccountsStore::new()),
+            accounts_store: RwLock::new(AccountsStore::new(accounts)),
         }
     }
 

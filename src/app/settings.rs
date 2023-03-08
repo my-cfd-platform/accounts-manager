@@ -10,6 +10,8 @@ pub struct SettingsModel {
     pub default_account_balance: f64,
     #[serde(rename = "DefaultAccountTradingGroup")]
     pub default_account_trading_group: String,
+    #[serde(rename = "AccountsPersistenceGrpcUrl")]
+    pub accounts_persistence_grpc_url: String,
 }
 
 #[async_trait::async_trait]

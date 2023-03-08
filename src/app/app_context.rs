@@ -6,7 +6,9 @@ use my_service_bus_tcp_client::MyServiceBusClient;
 use persist_queue::{PersistentQueue, PersistentQueueSettings};
 use rust_extensions::AppStates;
 
-use crate::{AccountsCache, PersistAccountQueueItem, SettingsModel};
+use crate::{
+    AccountsCache, AccountsManagerPersistenceGrpcClient, PersistAccountQueueItem, SettingsModel,
+};
 
 pub const APP_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 pub const APP_NAME: &'static str = env!("CARGO_PKG_NAME");
@@ -39,9 +41,13 @@ impl AppContext {
         );
 
         let account_persist_events_publisher = sb_client.get_publisher(false).await;
-
+        let accounts_persistence_grpc = AccountsManagerPersistenceGrpcClient::new(
+            settings.accounts_persistence_grpc_url.clone(),
+        )
+        .await;
+        let accounts = accounts_persistence_grpc.get_accounts().await;
         Self {
-            accounts_cache: Arc::new(AccountsCache::new()),
+            accounts_cache: Arc::new(AccountsCache::new(accounts)),
             settings,
             app_states: Arc::new(AppStates::create_initialized()),
             accounts_persist_queue: Arc::new(persist_queue),

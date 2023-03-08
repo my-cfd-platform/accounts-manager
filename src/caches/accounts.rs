@@ -1,7 +1,9 @@
 use engine_sb_contracts::AccountSbModel;
 use serde::{Deserialize, Serialize};
 
-use crate::accounts_manager::AccountGrpcModel;
+use crate::{
+    accounts_manager::AccountGrpcModel, accounts_manager_persistence::PersistenceAccountGrpcModel,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Account {
@@ -30,6 +32,23 @@ impl Into<AccountGrpcModel> for Account {
             create_process_id: self.create_process_id,
             trading_group: self.trading_group,
             last_update_process_id: self.last_update_process_id,
+        }
+    }
+}
+
+impl Into<Account> for PersistenceAccountGrpcModel {
+    fn into(self) -> Account {
+        Account {
+            id: self.id,
+            currency: self.currency,
+            trader_id: self.trader_id,
+            create_date: self.create_date,
+            last_update_date: self.last_update_date,
+            last_update_process_id: self.last_update_process_id,
+            balance: self.balance,
+            trading_disabled: self.trading_disabled,
+            create_process_id: self.create_process_id,
+            trading_group: self.trading_group,
         }
     }
 }

@@ -1,0 +1,20 @@
+syntax = "proto3";
+package accounts_manager_persistence;
+import "google/protobuf/empty.proto";
+
+message PersistenceAccountGrpcModel{
+    string Id = 1;
+    string TraderId = 2;
+    string Currency = 3;
+    double Balance = 4;
+    uint64 CreateDate = 5;
+    uint64 LastUpdateDate = 6;
+    bool TradingDisabled = 7;
+    string CreateProcessId = 8;
+    string TradingGroup = 9;
+    string LastUpdateProcessId = 10;
+}
+
+service AccountsManagerPersistenceGrpcService {
+    rpc GetAllAccounts(google.protobuf.Empty) returns (stream accounts_manager_persistence.PersistenceAccountGrpcModel);
+}
