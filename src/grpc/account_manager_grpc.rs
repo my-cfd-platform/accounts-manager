@@ -1,6 +1,7 @@
-use std::pin::Pin;
+use std::{pin::Pin, vec};
 
 use engine_sb_contracts::AccountPersistEvent;
+use tonic::Request;
 use uuid::Uuid;
 
 use crate::{
@@ -103,11 +104,31 @@ impl AccountsManagerGrpcService for GrpcService {
         let accounts = self.app.accounts_cache.get_accounts(&trader_id).await;
 
         let accounts = match accounts {
-            Some(accounts) => accounts,
-            None => vec![],
+            Some(accounts) => accounts
+                .iter()
+                .map(|x| x.to_owned().into())
+                .collect::<Vec<AccountGrpcModel>>(),
+            None => match &self.app.settings.accounts_default_currency {
+                Some(currency) => {
+                    let request = AccountManagerCreateAccountGrpcRequest {
+                        trader_id: trader_id.clone(),
+                        currency: currency.clone(),
+                        process_id: Uuid::new_v4().to_string(),
+                    };
+
+                    let account = self
+                        .create_account(Request::new(request))
+                        .await
+                        .unwrap()
+                        .into_inner();
+
+                    vec![account.into()]
+                }
+                None => vec![],
+            },
         };
 
-        my_grpc_extensions::grpc_server::send_vec_to_stream(accounts, |x| x.into()).await
+        my_grpc_extensions::grpc_server::send_vec_to_stream(accounts, |x| x).await
     }
 
     async fn update_client_account_balance(
