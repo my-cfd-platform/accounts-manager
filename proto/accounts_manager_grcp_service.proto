@@ -25,6 +25,7 @@ message AccountManagerCreateAccountGrpcRequest{
     string TraderId = 1;
     string Currency = 2;
     string ProcessId = 3;
+    optional string TradingGroupId = 4;
 }
 
 message AccountManagerUpdateAccountBalanceGrpcRequest{

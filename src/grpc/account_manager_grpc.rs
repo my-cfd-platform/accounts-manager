@@ -36,6 +36,11 @@ impl AccountsManagerGrpcService for GrpcService {
     ) -> Result<tonic::Response<AccountGrpcModel>, tonic::Status> {
         let request = request.into_inner();
 
+        let tg = match request.trading_group_id {
+            Some(tg) => tg,
+            None => self.app.settings.default_account_trading_group.clone(),
+        };
+
         let date = chrono::offset::Utc::now().timestamp_millis() as u64;
         let account_to_insert = Account {
             id: Uuid::new_v4().to_string(),
@@ -47,7 +52,7 @@ impl AccountsManagerGrpcService for GrpcService {
             last_update_date: date,
             last_update_process_id: request.process_id.clone(),
             create_process_id: request.process_id.clone(),
-            trading_group: self.app.settings.default_account_trading_group.clone(),
+            trading_group: tg,
         };
 
         let account = self
@@ -114,6 +119,7 @@ impl AccountsManagerGrpcService for GrpcService {
                         trader_id: trader_id.clone(),
                         currency: currency.clone(),
                         process_id: Uuid::new_v4().to_string(),
+                        trading_group_id: None
                     };
 
                     let account = self
