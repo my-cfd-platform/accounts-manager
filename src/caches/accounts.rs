@@ -1,4 +1,4 @@
-use engine_sb_contracts::AccountSbModel;
+use cfd_engine_sb_contracts::AccountSbModel;
 use serde::{Deserialize, Serialize};
 
 use crate::{

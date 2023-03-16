@@ -1,6 +1,8 @@
 use std::{pin::Pin, vec};
 
-use engine_sb_contracts::AccountPersistEvent;
+use cfd_engine_sb_contracts::{
+    AccountBalanceUpdateOperationSbModel, AccountBalanceUpdateSbModel, AccountPersistEvent,
+};
 use tonic::Request;
 use uuid::Uuid;
 
@@ -119,7 +121,7 @@ impl AccountsManagerGrpcService for GrpcService {
                         trader_id: trader_id.clone(),
                         currency: currency.clone(),
                         process_id: Uuid::new_v4().to_string(),
-                        trading_group_id: None
+                        trading_group_id: None,
                     };
 
                     let account = self
@@ -144,6 +146,18 @@ impl AccountsManagerGrpcService for GrpcService {
     {
         let request = request.into_inner();
 
+        let balance_operation = AccountBalanceUpdateOperationSbModel {
+            id: Uuid::new_v4().to_string(),
+            trader_id: request.trader_id.clone(),
+            account_id: request.account_id.clone(),
+            operation_type: request.reason.clone(),
+            process_id: Some(request.process_id.clone()),
+            delta: request.delta,
+            date_time_unix_ms: chrono::offset::Utc::now().timestamp_millis() as u64,
+            comment: request.comment,
+            reference_operation_id: request.reference_transaction_id,
+        };
+
         let update_balance_result = self
             .app
             .accounts_cache
@@ -162,7 +176,11 @@ impl AccountsManagerGrpcService for GrpcService {
                     .account_persist_events_publisher
                     .publish(&AccountPersistEvent {
                         add_account_event: None,
-                        update_account_event: Some(account.clone().into()),
+                        // update_account_event: Some(account.clone().into()),
+                        update_account_event: Some(AccountBalanceUpdateSbModel {
+                            account_after_update: Some(account.clone().into()),
+                            operation: Some(balance_operation),
+                        }),
                     })
                     .await
                     .unwrap();
@@ -205,7 +223,10 @@ impl AccountsManagerGrpcService for GrpcService {
                     .account_persist_events_publisher
                     .publish(&AccountPersistEvent {
                         add_account_event: None,
-                        update_account_event: Some(account.clone().into()),
+                        update_account_event: Some(AccountBalanceUpdateSbModel {
+                            account_after_update: Some(account.clone().into()),
+                            operation: None,
+                        }),
                     })
                     .await
                     .unwrap();

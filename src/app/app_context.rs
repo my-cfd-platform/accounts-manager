@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use engine_sb_contracts::AccountPersistEvent;
+use cfd_engine_sb_contracts::AccountPersistEvent;
 use my_service_bus_abstractions::publisher::MyServiceBusPublisher;
 use my_service_bus_tcp_client::MyServiceBusClient;
 use rust_extensions::AppStates;
