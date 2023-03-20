@@ -154,7 +154,7 @@ impl AccountsManagerGrpcService for GrpcService {
             process_id: Some(request.process_id.clone()),
             delta: request.delta,
             date_time_unix_ms: chrono::offset::Utc::now().timestamp_millis() as u64,
-            comment: request.comment,
+            comment: Some(request.comment),
             reference_operation_id: request.reference_transaction_id,
         };
 
