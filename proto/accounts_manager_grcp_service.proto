@@ -67,9 +67,14 @@ message AccountManagerUpdateTradingDisabledGrpcResponse{
     optional accounts_manager.AccountGrpcModel Account = 2;
 }
 
+message AccountManagerUpdateBalanceBalanceGrpcInfo{
+    string OperationId = 1;
+    accounts_manager.AccountGrpcModel Account = 2;
+}
+
 message AccountManagerUpdateAccountBalanceGrpcResponse{
     accounts_manager.AccountsManagerOperationResult Result = 1;
-    optional accounts_manager.AccountGrpcModel Account = 2;
+    optional accounts_manager.AccountManagerUpdateBalanceBalanceGrpcInfo UpdateBalanceInfo = 2;
 }
 
 message AccountManagerGetClientAccountGrpcResponse{

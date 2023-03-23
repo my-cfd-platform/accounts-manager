@@ -12,7 +12,7 @@ use crate::{
         AccountManagerCreateAccountGrpcRequest, AccountManagerGetClientAccountGrpcRequest,
         AccountManagerGetClientAccountGrpcResponse, AccountManagerGetClientAccountsGrpcRequest,
         AccountManagerUpdateAccountBalanceGrpcRequest,
-        AccountManagerUpdateAccountBalanceGrpcResponse,
+        AccountManagerUpdateAccountBalanceGrpcResponse, AccountManagerUpdateBalanceBalanceGrpcInfo,
         AccountManagerUpdateTradingDisabledGrpcRequest,
         AccountManagerUpdateTradingDisabledGrpcResponse,
     },
@@ -145,9 +145,10 @@ impl AccountsManagerGrpcService for GrpcService {
     ) -> Result<tonic::Response<AccountManagerUpdateAccountBalanceGrpcResponse>, tonic::Status>
     {
         let request = request.into_inner();
+        let transaction_id = Uuid::new_v4().to_string();
 
         let balance_operation = AccountBalanceUpdateOperationSbModel {
-            id: Uuid::new_v4().to_string(),
+            id: transaction_id.clone(),
             trader_id: request.trader_id.clone(),
             account_id: request.account_id.clone(),
             operation_type: request.reason.clone(),
@@ -187,12 +188,15 @@ impl AccountsManagerGrpcService for GrpcService {
 
                 AccountManagerUpdateAccountBalanceGrpcResponse {
                     result: 0,
-                    account: Some(account.into()),
+                    update_balance_info: Some(AccountManagerUpdateBalanceBalanceGrpcInfo {
+                        account: Some(account.into()),
+                        operation_id: transaction_id,
+                    }),
                 }
             }
             Err(error) => AccountManagerUpdateAccountBalanceGrpcResponse {
                 result: error.as_grpc_error(),
-                account: None,
+                update_balance_info: None,
             },
         };
 
