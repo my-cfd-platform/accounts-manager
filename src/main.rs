@@ -23,7 +23,7 @@ async fn main() {
     // queue_persist_timer.start(app.app_states.clone(), my_logger::LOGGER.clone());
 
     app.sb_client.start().await;
-    start_grpc_server(app.clone(), 8888).await;
+    tokio::spawn(start_grpc_server(app.clone(), 8888));
 
     http_is_alive_shared::start_up::start_server(
         APP_NAME.to_string(),
