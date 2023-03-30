@@ -6,11 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+http-is-alive-shared = { tag = "0.5.0", git = "https://github.com/MyJetTools/http-is-alive-shared.git" }
 
 flurl = { tag = "0.2.3", git = "https://github.com/MyJetTools/fl-url.git" }
 persist-queue = { tag = "0.1.4", git = "https://github.com/MyJetTools/persist-queue.git" }
 my-service-bus-tcp-client = { tag = "0.2.1", git = "https://github.com/MyJetTools/my-service-bus-tcp-client.git" }
-my-service-bus-abstractions = { tag = "0.1.1", git = "https://github.com/MyJetTools/my-service-bus-abstractions.git"}
+my-service-bus-abstractions = { tag = "0.1.1", git = "https://github.com/MyJetTools/my-service-bus-abstractions.git" }
 cfd-engine-sb-contracts = { tag = "0.1.11", git = "https://github.com/my-cfd-platform/cfd-engine-sb-contracts.git" }
 my-settings-reader = { tag = "0.1.5", git = "https://github.com/MyJetTools/my-settings-reader.git", features = [
     "background-reader",
@@ -35,4 +36,4 @@ serde_derive = "*"
 uuid = { version = "1.3.0", features = ["fast-rng", "v4", "macro-diagnostics"] }
 
 [build-dependencies]
-tonic-build = { version = "0.8.4", features = ["prost"] }
+ci-utils = { git = "https://github.com/MyJetTools/ci-utils.git", tag = "0.1.0" }
