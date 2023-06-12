@@ -46,6 +46,10 @@ message AccountManagerUpdateAccountBalanceGrpcRequest{
      optional string ReferenceTransactionId = 8;
 }
 
+message AccountManagerGetTraderIdByAccountIdGrpcRequest{
+    string AccountId = 1;
+}
+
 message AccountManagerGetClientAccountGrpcRequest{
     string TraderId = 1;
     string AccountId = 2;
@@ -82,10 +86,15 @@ message AccountManagerGetClientAccountGrpcResponse{
     optional accounts_manager.AccountGrpcModel Account = 2;
 }
 
+message AccountManagerGetTraderIdByAccountIdGrpcResponse{
+    optional string TraderId = 1;
+}
+
 service AccountsManagerGrpcService {
     rpc CreateAccount(accounts_manager.AccountManagerCreateAccountGrpcRequest) returns (accounts_manager.AccountGrpcModel);
     rpc GetClientAccount(accounts_manager.AccountManagerGetClientAccountGrpcRequest) returns (accounts_manager.AccountManagerGetClientAccountGrpcResponse);
     rpc GetClientAccounts(accounts_manager.AccountManagerGetClientAccountsGrpcRequest) returns (stream accounts_manager.AccountGrpcModel);
+    rpc GetTraderIdByAccountId(accounts_manager.AccountManagerGetTraderIdByAccountIdGrpcRequest) returns (AccountManagerGetTraderIdByAccountIdGrpcResponse);
     rpc UpdateClientAccountBalance(accounts_manager.AccountManagerUpdateAccountBalanceGrpcRequest) returns (accounts_manager.AccountManagerUpdateAccountBalanceGrpcResponse);
     rpc UpdateAccountTradingDisabled(accounts_manager.AccountManagerUpdateTradingDisabledGrpcRequest) returns (accounts_manager.AccountManagerUpdateTradingDisabledGrpcResponse);
 }

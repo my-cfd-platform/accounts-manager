@@ -3,7 +3,7 @@ use std::{pin::Pin, vec};
 use cfd_engine_sb_contracts::{
     AccountBalanceUpdateOperationSbModel, AccountBalanceUpdateSbModel, AccountPersistEvent,
 };
-use tonic::Request;
+use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
 use crate::{
@@ -18,6 +18,7 @@ use crate::{
     },
     Account,
 };
+use crate::accounts_manager::{AccountManagerGetTraderIdByAccountIdGrpcRequest, AccountManagerGetTraderIdByAccountIdGrpcResponse};
 
 use super::server::GrpcService;
 
@@ -246,5 +247,18 @@ impl AccountsManagerGrpcService for GrpcService {
         };
 
         Ok(tonic::Response::new(response))
+    }
+
+    async fn get_trader_id_by_account_id(&self, request: Request<AccountManagerGetTraderIdByAccountIdGrpcRequest>) -> Result<Response<AccountManagerGetTraderIdByAccountIdGrpcResponse>, Status> {
+        let account_id = request.into_inner().account_id;
+
+        let result = self
+            .app
+            .accounts_cache
+            .get_trader_id_by_account_id(account_id.as_str())
+            .await;
+        Ok(Response::new(AccountManagerGetTraderIdByAccountIdGrpcResponse{
+            trader_id: result,
+        }))
     }
 }

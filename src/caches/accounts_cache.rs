@@ -37,13 +37,22 @@ impl AccountsStore {
         }
 
         Self {
-            accounts: HashMap::new(),
+            accounts: accounts_cache,
         }
     }
 
     pub fn get_account(&self, trader_id: &str, accounts_id: &str) -> Option<&Account> {
         let trader_accounts = self.accounts.get(trader_id)?;
         return trader_accounts.get(accounts_id);
+    }
+
+    pub fn get_trader_id_by_account_id(&self, accounts_id: &str) -> Option<String> {
+        for (trader_id, accounts) in &self.accounts {
+            if accounts.contains_key(accounts_id){
+                return Some(trader_id.clone());
+            }
+        }
+        return None;
     }
 
     pub fn get_accounts(&self, trader_id: &str) -> Option<Vec<&Account>> {
@@ -152,6 +161,11 @@ impl AccountsCache {
         }
 
         return Some(result);
+    }
+
+    pub async fn get_trader_id_by_account_id(&self, accounts_id: &str) -> Option<String> {
+        let accounts_store = self.accounts_store.read().await;
+        return accounts_store.get_trader_id_by_account_id(accounts_id);
     }
 
     pub async fn add_account(&self, account: Account) -> Account {
