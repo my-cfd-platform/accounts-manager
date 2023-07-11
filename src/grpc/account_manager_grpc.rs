@@ -10,33 +10,25 @@ use crate::{
     accounts_manager::{
         accounts_manager_grpc_service_server::AccountsManagerGrpcService, AccountGrpcModel,
         AccountManagerCreateAccountGrpcRequest, AccountManagerGetClientAccountGrpcRequest,
-        AccountManagerGetClientAccountGrpcResponse, AccountManagerGetClientAccountsGrpcRequest,
-        AccountManagerUpdateAccountBalanceGrpcRequest,
+        AccountManagerUpdateAccountBalanceGrpcRequest, AccountManagerGetClientAccountGrpcResponse,
         AccountManagerUpdateAccountBalanceGrpcResponse, AccountManagerUpdateBalanceBalanceGrpcInfo,
-        AccountManagerUpdateTradingDisabledGrpcRequest,
+        AccountManagerUpdateTradingDisabledGrpcRequest, AccountManagerGetClientAccountsGrpcRequest,
         AccountManagerUpdateTradingDisabledGrpcResponse,
     },
     Account,
 };
-use crate::accounts_manager::{AccountManagerGetTraderIdByAccountIdGrpcRequest, AccountManagerGetTraderIdByAccountIdGrpcResponse};
+use crate::accounts_manager::{AccountManagerGetTraderIdByAccountIdGrpcRequest, AccountManagerGetTraderIdByAccountIdGrpcResponse, Search};
 
 use super::server::GrpcService;
 
 #[tonic::async_trait]
 impl AccountsManagerGrpcService for GrpcService {
-    type GetClientAccountsStream = Pin<
-        Box<
-            dyn tonic::codegen::futures_core::Stream<Item = Result<AccountGrpcModel, tonic::Status>>
-                + Send
-                + Sync
-                + 'static,
-        >,
-    >;
 
     async fn create_account(
         &self,
         request: tonic::Request<AccountManagerCreateAccountGrpcRequest>,
-    ) -> Result<tonic::Response<AccountGrpcModel>, tonic::Status> {
+    ) -> Result<tonic::Response<AccountGrpcModel>, tonic::Status>
+    {
         let request = request.into_inner();
 
         let tg = match request.trading_group_id {
@@ -79,7 +71,8 @@ impl AccountsManagerGrpcService for GrpcService {
     async fn get_client_account(
         &self,
         request: tonic::Request<AccountManagerGetClientAccountGrpcRequest>,
-    ) -> Result<tonic::Response<AccountManagerGetClientAccountGrpcResponse>, tonic::Status> {
+    ) -> Result<tonic::Response<AccountManagerGetClientAccountGrpcResponse>, tonic::Status>
+    {
         let AccountManagerGetClientAccountGrpcRequest {
             trader_id,
             account_id,
@@ -104,10 +97,21 @@ impl AccountsManagerGrpcService for GrpcService {
         Ok(response)
     }
 
+    type GetClientAccountsStream = Pin<
+        Box<
+            dyn tonic::codegen::futures_core::Stream<Item = Result<AccountGrpcModel, tonic::Status>>
+            + Send
+            + Sync
+            + 'static,
+        >,
+    >;
+
+
     async fn get_client_accounts(
         &self,
         request: tonic::Request<AccountManagerGetClientAccountsGrpcRequest>,
-    ) -> Result<tonic::Response<Self::GetClientAccountsStream>, tonic::Status> {
+    ) -> Result<tonic::Response<Self::GetClientAccountsStream>, tonic::Status>
+    {
         let AccountManagerGetClientAccountsGrpcRequest { trader_id } = request.into_inner();
         let accounts = self.app.accounts_cache.get_accounts(&trader_id).await;
 
@@ -260,5 +264,35 @@ impl AccountsManagerGrpcService for GrpcService {
         Ok(Response::new(AccountManagerGetTraderIdByAccountIdGrpcResponse{
             trader_id: result,
         }))
+    }
+
+    type SearchStream = Pin<
+        Box<
+            dyn tonic::codegen::futures_core::Stream<Item = Result<AccountGrpcModel, tonic::Status>>
+            + Send
+            + Sync
+            + 'static,
+        >,
+    >;
+
+    async fn search(&self, request: Request<Search>) -> Result<Response<Self::SearchStream>, Status>
+    {
+        let request = request.into_inner();
+        let result = self
+            .app
+            .accounts_cache.search(&request).await;
+        let accounts = get_accounts_vector(result);
+        my_grpc_extensions::grpc_server::send_vec_to_stream(accounts, |x| x).await
+    }
+}
+
+fn get_accounts_vector(accounts: Option<Vec<Account>>) -> Vec<AccountGrpcModel>
+{
+    match accounts {
+        Some(accounts) => accounts
+            .iter()
+            .map(|x| x.to_owned().into())
+            .collect::<Vec<AccountGrpcModel>>(),
+        None => vec![],
     }
 }

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use tokio::sync::RwLock;
 
 use crate::Account;
+use crate::accounts_manager::Search;
 
 #[derive(Debug)]
 pub enum OperationError {
@@ -58,6 +59,116 @@ impl AccountsStore {
     pub fn get_accounts(&self, trader_id: &str) -> Option<Vec<&Account>> {
         let trader_accounts = self.accounts.get(trader_id)?;
         return Some(trader_accounts.values().collect());
+    }
+
+    pub fn search(&self, search: &Search) -> Option<Vec<&Account>> {
+        let traders_condition = search.trader_ids.len() > 0;
+
+        let currency_condition = search.currency.is_some();
+        let currency = match &search.currency {
+            Some(value)=> value.to_string(),
+            None=>String::new()
+        };
+
+        let mut created_from_condition = false;
+        let mut created_to_condition = false;
+        let mut from:i64 = 0;
+        let mut to:i64 = 0;
+        match &search.created {
+            Some(created)=> {
+                created_from_condition = created.from.is_some();
+                created_to_condition = created.to.is_some();
+                if created_from_condition {
+                    from = created.from.unwrap();
+                }
+                if created_to_condition {
+                    to = created.to.unwrap();
+                }
+            },
+            None=>{}
+        };
+
+        let mut balance_from_condition = false;
+        let mut balance_to_condition = false;
+        let mut balance_from:i64 = 0;
+        let mut balance_to:i64 = 0;
+        match &search.balance {
+            Some(balance)=> {
+                balance_from_condition = balance.from.is_some();
+                balance_to_condition = balance.to.is_some();
+                if balance_from_condition {
+                    balance_from = balance.from.unwrap();
+                }
+                if balance_to_condition {
+                    balance_to = balance.to.unwrap();
+                }
+            },
+            None=>{}
+        };
+
+        let disabled_condition = search.disabled.is_some();
+        let disabled = match &search.disabled {
+            Some(value)=> *value,
+            None=>false
+        };
+
+        let mut accounts:Vec<&Account> = vec![];
+        for (trader_id, trader_accounts) in &self.accounts {
+            if traders_condition {
+                if !search.trader_ids.contains(&trader_id) {
+                    continue;
+                }
+            };
+            for account in trader_accounts.values() {
+                if currency_condition {
+                    if account.currency != currency {
+                        continue;
+                    }
+                }
+
+                if created_from_condition {
+                    if account.create_date < from as u64 {
+                        continue;
+                    }
+                }
+                if created_to_condition {
+                    if account.create_date > to as u64 {
+                        continue;
+                    }
+                }
+
+                if balance_from_condition {
+                    if account.balance < balance_from as f64 {
+                        continue;
+                    }
+                }
+                if balance_to_condition {
+                    if account.balance > balance_to as f64 {
+                        continue;
+                    }
+                }
+
+                if disabled_condition {
+                    if account.trading_disabled != disabled {
+                        continue;
+                    }
+                }
+                accounts.push(account);
+            }
+        }
+
+        return Some(accounts);
+    }
+
+    pub fn get_multiple_accounts(&self, trader_ids: Vec<String>) -> Option<Vec<&Account>> {
+        let mut accounts:Vec<&Account> = vec![];
+
+        for trader_id in trader_ids {
+            let trader_accounts = self.accounts.get(&trader_id)?;
+            let values = Vec::from_iter(trader_accounts.values());
+            accounts.extend_from_slice(&*values);
+        }
+        return Some(accounts);
     }
 
     pub fn add_account(&mut self, account: Account) -> Account {
@@ -153,6 +264,19 @@ impl AccountsCache {
     pub async fn get_accounts(&self, trader_id: &str) -> Option<Vec<Account>> {
         let accounts_store = self.accounts_store.read().await;
         let accounts = accounts_store.get_accounts(trader_id)?;
+
+        let mut result = vec![];
+
+        for itm in accounts {
+            result.push(itm.clone());
+        }
+
+        return Some(result);
+    }
+
+    pub async fn search(&self, search: &Search) -> Option<Vec<Account>> {
+        let accounts_store = self.accounts_store.read().await;
+        let accounts = accounts_store.search(&search)?;
 
         let mut result = vec![];
 

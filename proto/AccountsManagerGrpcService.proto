@@ -59,6 +59,19 @@ message AccountManagerGetClientAccountsGrpcRequest{
     string TraderId = 1;
 }
 
+message Search{
+    repeated string TraderIds = 1;
+    optional string Currency = 2;
+    optional FromToInt64Model Created = 3;
+    optional FromToInt64Model Balance = 4;
+    optional bool Disabled = 5;
+}
+
+message FromToInt64Model{
+    optional int64 From = 1;
+    optional int64 To = 2;
+}
+
 message AccountManagerUpdateTradingDisabledGrpcRequest{
     string TraderId = 1;
     string AccountId = 2;
@@ -94,6 +107,7 @@ service AccountsManagerGrpcService {
     rpc CreateAccount(accounts_manager.AccountManagerCreateAccountGrpcRequest) returns (accounts_manager.AccountGrpcModel);
     rpc GetClientAccount(accounts_manager.AccountManagerGetClientAccountGrpcRequest) returns (accounts_manager.AccountManagerGetClientAccountGrpcResponse);
     rpc GetClientAccounts(accounts_manager.AccountManagerGetClientAccountsGrpcRequest) returns (stream accounts_manager.AccountGrpcModel);
+    rpc Search(accounts_manager.Search) returns (stream accounts_manager.AccountGrpcModel);
     rpc GetTraderIdByAccountId(accounts_manager.AccountManagerGetTraderIdByAccountIdGrpcRequest) returns (AccountManagerGetTraderIdByAccountIdGrpcResponse);
     rpc UpdateClientAccountBalance(accounts_manager.AccountManagerUpdateAccountBalanceGrpcRequest) returns (accounts_manager.AccountManagerUpdateAccountBalanceGrpcResponse);
     rpc UpdateAccountTradingDisabled(accounts_manager.AccountManagerUpdateTradingDisabledGrpcRequest) returns (accounts_manager.AccountManagerUpdateTradingDisabledGrpcResponse);
