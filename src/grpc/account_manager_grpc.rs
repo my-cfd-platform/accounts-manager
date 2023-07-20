@@ -17,7 +17,7 @@ use crate::{
     },
     Account,
 };
-use crate::accounts_manager::{AccountManagerGetTraderIdByAccountIdGrpcRequest, AccountManagerGetTraderIdByAccountIdGrpcResponse, Search};
+use crate::accounts_manager::{AccountManagerGetTraderIdByAccountIdGrpcRequest, AccountManagerGetTraderIdByAccountIdGrpcResponse, SearchAccounts};
 
 use super::server::GrpcService;
 
@@ -275,7 +275,7 @@ impl AccountsManagerGrpcService for GrpcService {
         >,
     >;
 
-    async fn search(&self, request: Request<Search>) -> Result<Response<Self::SearchStream>, Status>
+    async fn search(&self, request: Request<SearchAccounts>) -> Result<Response<Self::SearchStream>, Status>
     {
         let request = request.into_inner();
         let result = self

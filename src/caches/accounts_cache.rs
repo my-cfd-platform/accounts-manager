@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use tokio::sync::RwLock;
 
 use crate::Account;
-use crate::accounts_manager::Search;
+use crate::accounts_manager::SearchAccounts;
 
 #[derive(Debug)]
 pub enum OperationError {
@@ -61,7 +61,7 @@ impl AccountsStore {
         return Some(trader_accounts.values().collect());
     }
 
-    pub fn search(&self, search: &Search) -> Option<Vec<&Account>> {
+    pub fn search(&self, search: &SearchAccounts) -> Option<Vec<&Account>> {
         let traders_condition = search.trader_ids.len() > 0;
 
         let currency_condition = search.currency.is_some();
@@ -274,7 +274,7 @@ impl AccountsCache {
         return Some(result);
     }
 
-    pub async fn search(&self, search: &Search) -> Option<Vec<Account>> {
+    pub async fn search(&self, search: &SearchAccounts) -> Option<Vec<Account>> {
         let accounts_store = self.accounts_store.read().await;
         let accounts = accounts_store.search(&search)?;
 
