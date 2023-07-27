@@ -5,7 +5,10 @@ use my_service_bus_abstractions::publisher::MyServiceBusPublisher;
 use my_service_bus_tcp_client::MyServiceBusClient;
 use rust_extensions::AppStates;
 
-use crate::{AccountsCache, AccountsManagerPersistenceGrpcClient, SettingsModel};
+use crate::AccountsCache;
+
+use crate::grpc_client::AccountsManagerPersistenceGrpcClient;
+use crate::SettingsReader;
 
 pub const APP_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 pub const APP_NAME: &'static str = env!("CARGO_PKG_NAME");
@@ -13,14 +16,14 @@ pub const APP_NAME: &'static str = env!("CARGO_PKG_NAME");
 pub struct AppContext {
     pub accounts_cache: Arc<AccountsCache>,
     // pub accounts_persist_queue: Arc<PersistentQueue<PersistAccountQueueItem>>,
-    pub settings: Arc<SettingsModel>,
+    pub settings_reader: Arc<SettingsReader>,
     pub app_states: Arc<AppStates>,
     pub sb_client: MyServiceBusClient,
     pub account_persist_events_publisher: MyServiceBusPublisher<AccountPersistEvent>,
 }
 
 impl AppContext {
-    pub async fn new(settings: Arc<SettingsModel>) -> Self {
+    pub async fn new(settings_reader: Arc<SettingsReader>) -> Self {
         // let persist_queue = PersistentQueue::load_from_backup(
         //     "AccountsSbPersistQueue".to_string(),
         //     PersistentQueueSettings::FilePersist(
@@ -33,20 +36,18 @@ impl AppContext {
         let sb_client = MyServiceBusClient::new(
             APP_NAME,
             APP_VERSION,
-            settings.clone(),
+            settings_reader.clone(),
             my_logger::LOGGER.clone(),
         );
 
         let account_persist_events_publisher = sb_client.get_publisher(false).await;
-        let accounts_persistence_grpc = AccountsManagerPersistenceGrpcClient::new(
-            settings.accounts_persistence_grpc_url.clone(),
-        )
-        .await;
+        let accounts_persistence_grpc =
+            AccountsManagerPersistenceGrpcClient::new(settings_reader.clone());
         let accounts = accounts_persistence_grpc.get_accounts().await;
         println!("Load {} accounts from persistence", accounts.len());
         Self {
             accounts_cache: Arc::new(AccountsCache::new(accounts)),
-            settings,
+            settings_reader,
             app_states: Arc::new(AppStates::create_initialized()),
             // accounts_persist_queue: Arc::new(persist_queue),
             sb_client,

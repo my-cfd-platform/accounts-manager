@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use tokio::sync::RwLock;
 
-use crate::Account;
 use crate::accounts_manager::SearchAccounts;
+use crate::Account;
 
 #[derive(Debug)]
 pub enum OperationError {
@@ -49,7 +49,7 @@ impl AccountsStore {
 
     pub fn get_trader_id_by_account_id(&self, accounts_id: &str) -> Option<String> {
         for (trader_id, accounts) in &self.accounts {
-            if accounts.contains_key(accounts_id){
+            if accounts.contains_key(accounts_id) {
                 return Some(trader_id.clone());
             }
         }
@@ -66,16 +66,16 @@ impl AccountsStore {
 
         let currency_condition = search.currency.is_some();
         let currency = match &search.currency {
-            Some(value)=> value.to_string(),
-            None=>String::new()
+            Some(value) => value.to_string(),
+            None => String::new(),
         };
 
         let mut created_from_condition = false;
         let mut created_to_condition = false;
-        let mut from:i64 = 0;
-        let mut to:i64 = 0;
+        let mut from: i64 = 0;
+        let mut to: i64 = 0;
         match &search.created {
-            Some(created)=> {
+            Some(created) => {
                 created_from_condition = created.from.is_some();
                 created_to_condition = created.to.is_some();
                 if created_from_condition {
@@ -84,16 +84,16 @@ impl AccountsStore {
                 if created_to_condition {
                     to = created.to.unwrap();
                 }
-            },
-            None=>{}
+            }
+            None => {}
         };
 
         let mut balance_from_condition = false;
         let mut balance_to_condition = false;
-        let mut balance_from:i64 = 0;
-        let mut balance_to:i64 = 0;
+        let mut balance_from: i64 = 0;
+        let mut balance_to: i64 = 0;
         match &search.balance {
-            Some(balance)=> {
+            Some(balance) => {
                 balance_from_condition = balance.from.is_some();
                 balance_to_condition = balance.to.is_some();
                 if balance_from_condition {
@@ -102,17 +102,17 @@ impl AccountsStore {
                 if balance_to_condition {
                     balance_to = balance.to.unwrap();
                 }
-            },
-            None=>{}
+            }
+            None => {}
         };
 
         let disabled_condition = search.disabled.is_some();
         let disabled = match &search.disabled {
-            Some(value)=> *value,
-            None=>false
+            Some(value) => *value,
+            None => false,
         };
 
-        let mut accounts:Vec<&Account> = vec![];
+        let mut accounts: Vec<&Account> = vec![];
         for (trader_id, trader_accounts) in &self.accounts {
             if traders_condition {
                 if !search.trader_ids.contains(&trader_id) {
@@ -161,7 +161,7 @@ impl AccountsStore {
     }
 
     pub fn get_multiple_accounts(&self, trader_ids: Vec<String>) -> Option<Vec<&Account>> {
-        let mut accounts:Vec<&Account> = vec![];
+        let mut accounts: Vec<&Account> = vec![];
 
         for trader_id in trader_ids {
             let trader_accounts = self.accounts.get(&trader_id)?;

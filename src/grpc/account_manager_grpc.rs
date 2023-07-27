@@ -6,40 +6,48 @@ use cfd_engine_sb_contracts::{
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
+use crate::accounts_manager::{
+    AccountManagerGetTraderIdByAccountIdGrpcRequest,
+    AccountManagerGetTraderIdByAccountIdGrpcResponse, SearchAccounts,
+};
 use crate::{
     accounts_manager::{
         accounts_manager_grpc_service_server::AccountsManagerGrpcService, AccountGrpcModel,
         AccountManagerCreateAccountGrpcRequest, AccountManagerGetClientAccountGrpcRequest,
-        AccountManagerUpdateAccountBalanceGrpcRequest, AccountManagerGetClientAccountGrpcResponse,
+        AccountManagerGetClientAccountGrpcResponse, AccountManagerGetClientAccountsGrpcRequest,
+        AccountManagerUpdateAccountBalanceGrpcRequest,
         AccountManagerUpdateAccountBalanceGrpcResponse, AccountManagerUpdateBalanceBalanceGrpcInfo,
-        AccountManagerUpdateTradingDisabledGrpcRequest, AccountManagerGetClientAccountsGrpcRequest,
+        AccountManagerUpdateTradingDisabledGrpcRequest,
         AccountManagerUpdateTradingDisabledGrpcResponse,
     },
     Account,
 };
-use crate::accounts_manager::{AccountManagerGetTraderIdByAccountIdGrpcRequest, AccountManagerGetTraderIdByAccountIdGrpcResponse, SearchAccounts};
 
 use super::server::GrpcService;
 
 #[tonic::async_trait]
 impl AccountsManagerGrpcService for GrpcService {
-
     async fn create_account(
         &self,
         request: tonic::Request<AccountManagerCreateAccountGrpcRequest>,
-    ) -> Result<tonic::Response<AccountGrpcModel>, tonic::Status>
-    {
+    ) -> Result<tonic::Response<AccountGrpcModel>, tonic::Status> {
         let request = request.into_inner();
+
+        let (default_account_balance, default_account_trading_group) = self
+            .app
+            .settings_reader
+            .get_default_account_balance_and_group()
+            .await;
 
         let tg = match request.trading_group_id {
             Some(tg) => tg,
-            None => self.app.settings.default_account_trading_group.clone(),
+            None => default_account_trading_group,
         };
 
         let date = chrono::offset::Utc::now().timestamp_millis() as u64;
         let account_to_insert = Account {
             id: Uuid::new_v4().to_string(),
-            balance: self.app.settings.default_account_balance,
+            balance: default_account_balance,
             currency: request.currency,
             trader_id: request.trader_id,
             trading_disabled: false,
@@ -71,8 +79,7 @@ impl AccountsManagerGrpcService for GrpcService {
     async fn get_client_account(
         &self,
         request: tonic::Request<AccountManagerGetClientAccountGrpcRequest>,
-    ) -> Result<tonic::Response<AccountManagerGetClientAccountGrpcResponse>, tonic::Status>
-    {
+    ) -> Result<tonic::Response<AccountManagerGetClientAccountGrpcResponse>, tonic::Status> {
         let AccountManagerGetClientAccountGrpcRequest {
             trader_id,
             account_id,
@@ -100,18 +107,16 @@ impl AccountsManagerGrpcService for GrpcService {
     type GetClientAccountsStream = Pin<
         Box<
             dyn tonic::codegen::futures_core::Stream<Item = Result<AccountGrpcModel, tonic::Status>>
-            + Send
-            + Sync
-            + 'static,
+                + Send
+                + Sync
+                + 'static,
         >,
     >;
-
 
     async fn get_client_accounts(
         &self,
         request: tonic::Request<AccountManagerGetClientAccountsGrpcRequest>,
-    ) -> Result<tonic::Response<Self::GetClientAccountsStream>, tonic::Status>
-    {
+    ) -> Result<tonic::Response<Self::GetClientAccountsStream>, tonic::Status> {
         let AccountManagerGetClientAccountsGrpcRequest { trader_id } = request.into_inner();
         let accounts = self.app.accounts_cache.get_accounts(&trader_id).await;
 
@@ -120,7 +125,12 @@ impl AccountsManagerGrpcService for GrpcService {
                 .iter()
                 .map(|x| x.to_owned().into())
                 .collect::<Vec<AccountGrpcModel>>(),
-            None => match &self.app.settings.accounts_default_currency {
+            None => match &self
+                .app
+                .settings_reader
+                .get_accounts_default_currency()
+                .await
+            {
                 Some(currency) => {
                     let request = AccountManagerCreateAccountGrpcRequest {
                         trader_id: trader_id.clone(),
@@ -253,7 +263,10 @@ impl AccountsManagerGrpcService for GrpcService {
         Ok(tonic::Response::new(response))
     }
 
-    async fn get_trader_id_by_account_id(&self, request: Request<AccountManagerGetTraderIdByAccountIdGrpcRequest>) -> Result<Response<AccountManagerGetTraderIdByAccountIdGrpcResponse>, Status> {
+    async fn get_trader_id_by_account_id(
+        &self,
+        request: Request<AccountManagerGetTraderIdByAccountIdGrpcRequest>,
+    ) -> Result<Response<AccountManagerGetTraderIdByAccountIdGrpcResponse>, Status> {
         let account_id = request.into_inner().account_id;
 
         let result = self
@@ -261,33 +274,35 @@ impl AccountsManagerGrpcService for GrpcService {
             .accounts_cache
             .get_trader_id_by_account_id(account_id.as_str())
             .await;
-        Ok(Response::new(AccountManagerGetTraderIdByAccountIdGrpcResponse{
-            trader_id: result,
-        }))
+        Ok(Response::new(
+            AccountManagerGetTraderIdByAccountIdGrpcResponse { trader_id: result },
+        ))
     }
 
     type SearchStream = Pin<
         Box<
             dyn tonic::codegen::futures_core::Stream<Item = Result<AccountGrpcModel, tonic::Status>>
-            + Send
-            + Sync
-            + 'static,
+                + Send
+                + Sync
+                + 'static,
         >,
     >;
 
-    async fn search(&self, request: Request<SearchAccounts>) -> Result<Response<Self::SearchStream>, Status>
-    {
+    async fn search(
+        &self,
+        request: Request<SearchAccounts>,
+    ) -> Result<Response<Self::SearchStream>, Status> {
         let request = request.into_inner();
-        let result = self
-            .app
-            .accounts_cache.search(&request).await;
+        let result = self.app.accounts_cache.search(&request).await;
         let accounts = get_accounts_vector(result);
         my_grpc_extensions::grpc_server::send_vec_to_stream(accounts, |x| x).await
     }
+    async fn ping(&self, _: tonic::Request<()>) -> Result<tonic::Response<()>, tonic::Status> {
+        Ok(tonic::Response::new(()))
+    }
 }
 
-fn get_accounts_vector(accounts: Option<Vec<Account>>) -> Vec<AccountGrpcModel>
-{
+fn get_accounts_vector(accounts: Option<Vec<Account>>) -> Vec<AccountGrpcModel> {
     match accounts {
         Some(accounts) => accounts
             .iter()

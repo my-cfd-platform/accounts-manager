@@ -2,6 +2,8 @@ mod app;
 mod background;
 mod caches;
 mod grpc;
+mod grpc_client;
+mod settings;
 
 pub mod accounts_manager {
     tonic::include_proto!("accounts_manager");
@@ -15,3 +17,5 @@ pub use app::*;
 pub use background::*;
 pub use caches::*;
 pub use grpc::*;
+pub use grpc_client::*;
+pub use settings::*;

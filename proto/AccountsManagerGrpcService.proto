@@ -1,5 +1,6 @@
 ﻿syntax = "proto3";
 package accounts_manager;
+import "google/protobuf/empty.proto";
 
 enum AccountsManagerOperationResult{
     Ok = 0;
@@ -111,4 +112,5 @@ service AccountsManagerGrpcService {
     rpc GetTraderIdByAccountId(accounts_manager.AccountManagerGetTraderIdByAccountIdGrpcRequest) returns (AccountManagerGetTraderIdByAccountIdGrpcResponse);
     rpc UpdateClientAccountBalance(accounts_manager.AccountManagerUpdateAccountBalanceGrpcRequest) returns (accounts_manager.AccountManagerUpdateAccountBalanceGrpcResponse);
     rpc UpdateAccountTradingDisabled(accounts_manager.AccountManagerUpdateTradingDisabledGrpcRequest) returns (accounts_manager.AccountManagerUpdateTradingDisabledGrpcResponse);
+    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
