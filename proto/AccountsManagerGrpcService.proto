@@ -1,4 +1,4 @@
-﻿syntax = "proto3";
+syntax = "proto3";
 package accounts_manager;
 import "google/protobuf/empty.proto";
 

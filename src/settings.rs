@@ -1,19 +1,19 @@
-use my_service_bus_tcp_client::MyServiceBusSettings;
+use serde::{Deserialize, Serialize};
+use service_sdk::async_trait;
 
-use serde_derive::{Deserialize, Serialize};
+service_sdk::macros::use_settings!();
 
-#[derive(my_settings_reader::SettingsModel, Serialize, Deserialize, Debug, Clone)]
+#[derive(
+    my_settings_reader::SettingsModel, AutoGenerateSettingsTraits, SdkSettingsTraits, Serialize, Deserialize, Debug, Clone,
+)]
 pub struct SettingsModel {
-    #[serde(rename = "ServiceBusTcp")]
     pub service_bus_tcp: String,
-    #[serde(rename = "DefaultAccountBalance")]
     pub default_account_balance: f64,
-    #[serde(rename = "DefaultAccountTradingGroup")]
     pub default_account_trading_group: String,
-    #[serde(rename = "AccountsPersistenceGrpcUrl")]
     pub accounts_persistence_grpc_url: String,
-    #[serde(rename = "AccountDefaultCurrency")]
     pub accounts_default_currency: Option<String>,
+    pub my_telemetry: String,
+    pub seq_conn_string: String,
 }
 
 impl SettingsReader {
@@ -32,15 +32,7 @@ impl SettingsReader {
 }
 
 #[async_trait::async_trait]
-impl MyServiceBusSettings for SettingsReader {
-    async fn get_host_port(&self) -> String {
-        let read_access = self.settings.read().await;
-        return read_access.service_bus_tcp.clone();
-    }
-}
-
-#[async_trait::async_trait]
-impl my_grpc_extensions::GrpcClientSettings for SettingsReader {
+impl service_sdk::my_grpc_extensions::GrpcClientSettings for SettingsReader {
     async fn get_grpc_url(&self, name: &'static str) -> String {
         if name == crate::grpc_client::AccountsManagerPersistenceGrpcClient::get_service_name() {
             let read_access = self.settings.read().await;

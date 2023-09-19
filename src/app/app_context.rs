@@ -1,57 +1,48 @@
 use std::sync::Arc;
 
 use cfd_engine_sb_contracts::AccountPersistEvent;
-use my_service_bus_abstractions::publisher::MyServiceBusPublisher;
-use my_service_bus_tcp_client::MyServiceBusClient;
-use rust_extensions::AppStates;
+use service_sdk::my_service_bus::abstractions::publisher::MyServiceBusPublisher;
+use service_sdk::my_telemetry::MyTelemetryContext;
+use service_sdk::ServiceContext;
 
-use crate::AccountsCache;
+use crate::{AccountsCache, SettingsReader};
 
 use crate::grpc_client::AccountsManagerPersistenceGrpcClient;
-use crate::SettingsReader;
-
-pub const APP_VERSION: &'static str = env!("CARGO_PKG_VERSION");
-pub const APP_NAME: &'static str = env!("CARGO_PKG_NAME");
-
 pub struct AppContext {
     pub accounts_cache: Arc<AccountsCache>,
-    // pub accounts_persist_queue: Arc<PersistentQueue<PersistAccountQueueItem>>,
     pub settings_reader: Arc<SettingsReader>,
-    pub app_states: Arc<AppStates>,
-    pub sb_client: MyServiceBusClient,
     pub account_persist_events_publisher: MyServiceBusPublisher<AccountPersistEvent>,
 }
 
 impl AppContext {
-    pub async fn new(settings_reader: Arc<SettingsReader>) -> Self {
-        // let persist_queue = PersistentQueue::load_from_backup(
-        //     "AccountsSbPersistQueue".to_string(),
-        //     PersistentQueueSettings::FilePersist(
-        //         "./backup/accounts-sb-persist-queue".to_string(),
-        //         2,
-        //     ),
-        // )
-        // .await;
-
-        let sb_client = MyServiceBusClient::new(
-            APP_NAME,
-            APP_VERSION,
-            settings_reader.clone(),
-            my_logger::LOGGER.clone(),
-        );
-
-        let account_persist_events_publisher = sb_client.get_publisher(false).await;
-        let accounts_persistence_grpc =
-            AccountsManagerPersistenceGrpcClient::new(settings_reader.clone());
-        let accounts = accounts_persistence_grpc.get_accounts().await;
-        println!("Load {} accounts from persistence", accounts.len());
+    pub async fn new(settings_reader: Arc<SettingsReader>, sc: &ServiceContext) -> Self {
+        let account_persist_events_publisher = sc.get_sb_publisher(false).await;
         Self {
-            accounts_cache: Arc::new(AccountsCache::new(accounts)),
+            accounts_cache: Arc::new(load_accounts(settings_reader.clone()).await),
             settings_reader,
-            app_states: Arc::new(AppStates::create_initialized()),
-            // accounts_persist_queue: Arc::new(persist_queue),
-            sb_client,
             account_persist_events_publisher,
         }
     }
+}
+
+async fn load_accounts(settings_reader: Arc<SettingsReader>) -> AccountsCache {
+    let accounts_persistence_grpc =
+        AccountsManagerPersistenceGrpcClient::new(settings_reader.clone());
+
+    let telemetry = MyTelemetryContext::new();
+    telemetry.start_event_tracking("load_accounts");
+
+    let accounts = accounts_persistence_grpc
+        .get_all_accounts((), &telemetry)
+        .await
+        .unwrap();
+
+    let accounts = match accounts {
+        Some(src) => src,
+        None => vec![],
+    };
+
+    println!("Load {} accounts from persistence", accounts.len());
+
+    return AccountsCache::new(accounts.iter().map(|x| x.to_owned().into()).collect());
 }

@@ -1,11 +1,5 @@
 use std::{pin::Pin, vec};
 
-use cfd_engine_sb_contracts::{
-    AccountBalanceUpdateOperationSbModel, AccountBalanceUpdateSbModel, AccountPersistEvent,
-};
-use tonic::{Request, Response, Status};
-use uuid::Uuid;
-
 use crate::accounts_manager::{
     AccountManagerGetTraderIdByAccountIdGrpcRequest,
     AccountManagerGetTraderIdByAccountIdGrpcResponse, SearchAccounts,
@@ -22,11 +16,24 @@ use crate::{
     },
     Account,
 };
+use cfd_engine_sb_contracts::{
+    AccountBalanceUpdateOperationSbModel, AccountBalanceUpdateSbModel, AccountPersistEvent,
+};
+use service_sdk::my_grpc_extensions::prelude::Stream;
+use tonic::{Request, Response, Status};
+use uuid::Uuid;
 
 use super::server::GrpcService;
+use service_sdk::my_grpc_extensions;
+use service_sdk::my_grpc_extensions::server::with_telemetry;
 
 #[tonic::async_trait]
 impl AccountsManagerGrpcService for GrpcService {
+    type GetClientAccountsStream = Pin<
+        Box<dyn Stream<Item = Result<AccountGrpcModel, tonic::Status>> + Send + Sync + 'static>,
+    >;
+
+    #[with_telemetry]
     async fn create_account(
         &self,
         request: tonic::Request<AccountManagerCreateAccountGrpcRequest>,
@@ -66,24 +73,30 @@ impl AccountsManagerGrpcService for GrpcService {
 
         self.app
             .account_persist_events_publisher
-            .publish(&AccountPersistEvent {
-                add_account_event: Some(account.clone().into()),
-                update_account_event: None,
-            })
+            .publish(
+                &AccountPersistEvent {
+                    add_account_event: Some(account.clone().into()),
+                    update_account_event: None,
+                },
+                Some(my_telemetry),
+            )
             .await
             .unwrap();
 
         return Ok(tonic::Response::new(account_to_insert.into()));
     }
 
+    #[with_telemetry]
     async fn get_client_account(
         &self,
         request: tonic::Request<AccountManagerGetClientAccountGrpcRequest>,
     ) -> Result<tonic::Response<AccountManagerGetClientAccountGrpcResponse>, tonic::Status> {
+        let request  = request.into_inner();
+        
         let AccountManagerGetClientAccountGrpcRequest {
             trader_id,
             account_id,
-        } = request.into_inner();
+        } = request;
         let account = self
             .app
             .accounts_cache
@@ -104,20 +117,13 @@ impl AccountsManagerGrpcService for GrpcService {
         Ok(response)
     }
 
-    type GetClientAccountsStream = Pin<
-        Box<
-            dyn tonic::codegen::futures_core::Stream<Item = Result<AccountGrpcModel, tonic::Status>>
-                + Send
-                + Sync
-                + 'static,
-        >,
-    >;
-
+    #[with_telemetry]
     async fn get_client_accounts(
         &self,
         request: tonic::Request<AccountManagerGetClientAccountsGrpcRequest>,
     ) -> Result<tonic::Response<Self::GetClientAccountsStream>, tonic::Status> {
-        let AccountManagerGetClientAccountsGrpcRequest { trader_id } = request.into_inner();
+        let request = request.into_inner();
+        let AccountManagerGetClientAccountsGrpcRequest { trader_id } = request;
         let accounts = self.app.accounts_cache.get_accounts(&trader_id).await;
 
         let accounts = match accounts {
@@ -151,9 +157,10 @@ impl AccountsManagerGrpcService for GrpcService {
             },
         };
 
-        my_grpc_extensions::grpc_server::send_vec_to_stream(accounts, |x| x).await
+        service_sdk::my_grpc_extensions::grpc_server::send_vec_to_stream(accounts, |x| x).await
     }
 
+    #[with_telemetry]
     async fn update_client_account_balance(
         &self,
         request: tonic::Request<AccountManagerUpdateAccountBalanceGrpcRequest>,
@@ -190,14 +197,17 @@ impl AccountsManagerGrpcService for GrpcService {
             Ok(account) => {
                 self.app
                     .account_persist_events_publisher
-                    .publish(&AccountPersistEvent {
-                        add_account_event: None,
-                        // update_account_event: Some(account.clone().into()),
-                        update_account_event: Some(AccountBalanceUpdateSbModel {
-                            account_after_update: Some(account.clone().into()),
-                            operation: Some(balance_operation),
-                        }),
-                    })
+                    .publish(
+                        &AccountPersistEvent {
+                            add_account_event: None,
+                            // update_account_event: Some(account.clone().into()),
+                            update_account_event: Some(AccountBalanceUpdateSbModel {
+                                account_after_update: Some(account.clone().into()),
+                                operation: Some(balance_operation),
+                            }),
+                        },
+                        Some(my_telemetry),
+                    )
                     .await
                     .unwrap();
 
@@ -218,6 +228,7 @@ impl AccountsManagerGrpcService for GrpcService {
         Ok(tonic::Response::new(response))
     }
 
+    #[with_telemetry]
     async fn update_account_trading_disabled(
         &self,
         request: tonic::Request<AccountManagerUpdateTradingDisabledGrpcRequest>,
@@ -240,13 +251,16 @@ impl AccountsManagerGrpcService for GrpcService {
             Ok(account) => {
                 self.app
                     .account_persist_events_publisher
-                    .publish(&AccountPersistEvent {
-                        add_account_event: None,
-                        update_account_event: Some(AccountBalanceUpdateSbModel {
-                            account_after_update: Some(account.clone().into()),
-                            operation: None,
-                        }),
-                    })
+                    .publish(
+                        &AccountPersistEvent {
+                            add_account_event: None,
+                            update_account_event: Some(AccountBalanceUpdateSbModel {
+                                account_after_update: Some(account.clone().into()),
+                                operation: None,
+                            }),
+                        },
+                        Some(my_telemetry),
+                    )
                     .await
                     .unwrap();
                 AccountManagerUpdateTradingDisabledGrpcResponse {
@@ -263,11 +277,13 @@ impl AccountsManagerGrpcService for GrpcService {
         Ok(tonic::Response::new(response))
     }
 
+    #[with_telemetry]
     async fn get_trader_id_by_account_id(
         &self,
         request: Request<AccountManagerGetTraderIdByAccountIdGrpcRequest>,
     ) -> Result<Response<AccountManagerGetTraderIdByAccountIdGrpcResponse>, Status> {
-        let account_id = request.into_inner().account_id;
+        let request = request.into_inner();
+        let account_id = request.account_id;
 
         let result = self
             .app
@@ -280,14 +296,10 @@ impl AccountsManagerGrpcService for GrpcService {
     }
 
     type SearchStream = Pin<
-        Box<
-            dyn tonic::codegen::futures_core::Stream<Item = Result<AccountGrpcModel, tonic::Status>>
-                + Send
-                + Sync
-                + 'static,
-        >,
+        Box<dyn Stream<Item = Result<AccountGrpcModel, tonic::Status>> + Send + Sync + 'static>,
     >;
 
+    #[with_telemetry]
     async fn search(
         &self,
         request: Request<SearchAccounts>,
@@ -295,7 +307,7 @@ impl AccountsManagerGrpcService for GrpcService {
         let request = request.into_inner();
         let result = self.app.accounts_cache.search(&request).await;
         let accounts = get_accounts_vector(result);
-        my_grpc_extensions::grpc_server::send_vec_to_stream(accounts, |x| x).await
+        service_sdk::my_grpc_extensions::grpc_server::send_vec_to_stream(accounts, |x| x).await
     }
     async fn ping(&self, _: tonic::Request<()>) -> Result<tonic::Response<()>, tonic::Status> {
         Ok(tonic::Response::new(()))
