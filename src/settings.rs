@@ -7,7 +7,7 @@ service_sdk::macros::use_settings!();
     my_settings_reader::SettingsModel, AutoGenerateSettingsTraits, SdkSettingsTraits, Serialize, Deserialize, Debug, Clone,
 )]
 pub struct SettingsModel {
-    pub service_bus_tcp: String,
+    pub my_sb_tcp_host_port: String,
     pub default_account_balance: f64,
     pub default_account_trading_group: String,
     pub accounts_persistence_grpc_url: String,

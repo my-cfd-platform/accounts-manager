@@ -14,6 +14,7 @@ enum UpdateBalanceReason {
     BalanceCorrection = 1;
     Deposit = 2;
     Withdrawal = 3;
+    WithdrawalCanceled = 4;
 }
 
 message AccountGrpcModel{

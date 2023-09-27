@@ -9,6 +9,7 @@ impl Into<AccountBalanceUpdateOperationType> for UpdateBalanceReason {
             UpdateBalanceReason::BalanceCorrection => AccountBalanceUpdateOperationType::BalanceCorrection,
             UpdateBalanceReason::Deposit => AccountBalanceUpdateOperationType::Deposit,
             UpdateBalanceReason::Withdrawal => AccountBalanceUpdateOperationType::Withdrawal,
+            UpdateBalanceReason::WithdrawalCanceled => AccountBalanceUpdateOperationType::Withdrawal,
         }
     }
 }
