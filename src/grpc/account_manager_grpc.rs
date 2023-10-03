@@ -2,7 +2,7 @@ use std::{pin::Pin, vec};
 
 use crate::accounts_manager::{
     AccountManagerGetTraderIdByAccountIdGrpcRequest,
-    AccountManagerGetTraderIdByAccountIdGrpcResponse, SearchAccounts,
+    AccountManagerGetTraderIdByAccountIdGrpcResponse, SearchAccounts, AccountManagerUpdateTradingGroupGrpcRequest,
 };
 use crate::{
     accounts_manager::{
@@ -243,6 +243,55 @@ impl AccountsManagerGrpcService for GrpcService {
                 &request.trader_id,
                 &request.account_id,
                 request.trading_disabled,
+                &request.process_id,
+            )
+            .await;
+
+        let response = match update_balance_result {
+            Ok(account) => {
+                self.app
+                    .account_persist_events_publisher
+                    .publish(
+                        &AccountPersistEvent {
+                            add_account_event: None,
+                            update_account_event: Some(AccountBalanceUpdateSbModel {
+                                account_after_update: Some(account.clone().into()),
+                                operation: None,
+                            }),
+                        },
+                        Some(my_telemetry),
+                    )
+                    .await
+                    .unwrap();
+                AccountManagerUpdateTradingDisabledGrpcResponse {
+                    result: 0,
+                    account: Some(account.into()),
+                }
+            }
+            Err(error) => AccountManagerUpdateTradingDisabledGrpcResponse {
+                result: error.as_grpc_error(),
+                account: None,
+            },
+        };
+
+        Ok(tonic::Response::new(response))
+    }
+
+    #[with_telemetry]
+    async fn update_account_trading_group(
+        &self,
+        request: tonic::Request<AccountManagerUpdateTradingGroupGrpcRequest>,
+    ) -> Result<tonic::Response<AccountManagerUpdateTradingDisabledGrpcResponse>, tonic::Status>
+    {
+        let request = request.into_inner();
+
+        let update_balance_result = self
+            .app
+            .accounts_cache
+            .update_trading_group(
+                &request.trader_id,
+                &request.account_id,
+                request.new_trading_group.as_str(),
                 &request.process_id,
             )
             .await;

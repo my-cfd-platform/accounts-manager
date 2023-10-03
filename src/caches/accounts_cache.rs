@@ -241,6 +241,34 @@ impl AccountsStore {
 
         return Ok(account);
     }
+
+    pub fn update_trading_group(
+        &mut self,
+        trader_id: &str,
+        account_id: &str,
+        trading_group: &str,
+        process_id: &str,
+    ) -> Result<&Account, OperationError> {
+        let trader_accounts = self.accounts.get_mut(trader_id);
+
+        if let None = trader_accounts {
+            return Err(OperationError::TraderNotFound);
+        }
+
+        let account = trader_accounts.unwrap().get_mut(account_id);
+
+        if let None = account {
+            return Err(OperationError::AccountNofFound);
+        }
+
+        let account = account.unwrap();
+
+        account.trading_group = trading_group.to_string();
+        account.last_update_date = chrono::offset::Utc::now().timestamp_millis() as u64;
+        account.last_update_process_id = process_id.to_string();
+
+        return Ok(account);
+    }
 }
 
 pub struct AccountsCache {
@@ -329,6 +357,24 @@ impl AccountsCache {
             trader_id,
             account_id,
             trading_disabled,
+            process_id,
+        )?;
+
+        return Ok(account.clone());
+    }
+
+    pub async fn update_trading_group(
+        &self,
+        trader_id: &str,
+        account_id: &str,
+        trading_group: &str,
+        process_id: &str,
+    ) -> Result<Account, OperationError> {
+        let mut accounts_store = self.accounts_store.write().await;
+        let account = accounts_store.update_trading_group(
+            trader_id,
+            account_id,
+            trading_group,
             process_id,
         )?;
 
