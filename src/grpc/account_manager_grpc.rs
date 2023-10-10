@@ -169,11 +169,15 @@ impl AccountsManagerGrpcService for GrpcService {
         let request = request.into_inner();
         let transaction_id = Uuid::new_v4().to_string();
 
+        let reason: crate::accounts_manager::UpdateBalanceReason = request.reason();
+
+
+
         let balance_operation = AccountBalanceUpdateOperationSbModel {
             id: transaction_id.clone(),
             trader_id: request.trader_id.clone(),
             account_id: request.account_id.clone(),
-            operation_type: request.reason.clone(),
+            operation_type: reason.into(),
             process_id: Some(request.process_id.clone()),
             delta: request.delta,
             date_time_unix_ms: chrono::offset::Utc::now().timestamp_millis() as u64,
