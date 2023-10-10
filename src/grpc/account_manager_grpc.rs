@@ -166,6 +166,8 @@ impl AccountsManagerGrpcService for GrpcService {
         request: tonic::Request<AccountManagerUpdateAccountBalanceGrpcRequest>,
     ) -> Result<tonic::Response<AccountManagerUpdateAccountBalanceGrpcResponse>, tonic::Status>
     {
+
+        println!("Balance update request: {:?}", request);
         let request = request.into_inner();
         let transaction_id = Uuid::new_v4().to_string();
 
