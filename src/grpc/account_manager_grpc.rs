@@ -2,7 +2,8 @@ use std::{pin::Pin, vec};
 
 use crate::accounts_manager::{
     AccountManagerGetTraderIdByAccountIdGrpcRequest,
-    AccountManagerGetTraderIdByAccountIdGrpcResponse, SearchAccounts, AccountManagerUpdateTradingGroupGrpcRequest,
+    AccountManagerGetTraderIdByAccountIdGrpcResponse, AccountManagerUpdateTradingGroupGrpcRequest,
+    SearchAccounts,
 };
 use crate::{
     accounts_manager::{
@@ -91,8 +92,8 @@ impl AccountsManagerGrpcService for GrpcService {
         &self,
         request: tonic::Request<AccountManagerGetClientAccountGrpcRequest>,
     ) -> Result<tonic::Response<AccountManagerGetClientAccountGrpcResponse>, tonic::Status> {
-        let request  = request.into_inner();
-        
+        let request = request.into_inner();
+
         let AccountManagerGetClientAccountGrpcRequest {
             trader_id,
             account_id,
@@ -157,7 +158,11 @@ impl AccountsManagerGrpcService for GrpcService {
             },
         };
 
-        service_sdk::my_grpc_extensions::grpc_server::send_vec_to_stream(accounts, |x| x).await
+        service_sdk::my_grpc_extensions::grpc_server::send_vec_to_stream(
+            accounts.into_iter(),
+            |x| x,
+        )
+        .await
     }
 
     #[with_telemetry]
@@ -166,14 +171,11 @@ impl AccountsManagerGrpcService for GrpcService {
         request: tonic::Request<AccountManagerUpdateAccountBalanceGrpcRequest>,
     ) -> Result<tonic::Response<AccountManagerUpdateAccountBalanceGrpcResponse>, tonic::Status>
     {
-
         println!("Balance update request: {:?}", request);
         let request = request.into_inner();
         let transaction_id = Uuid::new_v4().to_string();
 
         let reason: crate::accounts_manager::UpdateBalanceReason = request.reason();
-
-
 
         let balance_operation = AccountBalanceUpdateOperationSbModel {
             id: transaction_id.clone(),
@@ -183,8 +185,8 @@ impl AccountsManagerGrpcService for GrpcService {
             process_id: Some(request.process_id.clone()),
             delta: request.delta,
             date_time_unix_ms: chrono::offset::Utc::now().timestamp_millis() as u64,
-            comment: Some(request.comment),
-            reference_operation_id: request.reference_transaction_id,
+            comment: Some(request.comment.clone()),
+            reference_operation_id: request.reference_transaction_id.clone(),
         };
 
         let update_balance_result = self
@@ -199,29 +201,24 @@ impl AccountsManagerGrpcService for GrpcService {
             )
             .await;
 
+        let mut sb_event = None;
+
         let response = match update_balance_result {
             Ok(account) => {
-                self.app
-                    .account_persist_events_publisher
-                    .publish(
-                        &AccountPersistEvent {
-                            add_account_event: None,
-                            // update_account_event: Some(account.clone().into()),
-                            update_account_event: Some(AccountBalanceUpdateSbModel {
-                                account_after_update: Some(account.clone().into()),
-                                operation: Some(balance_operation),
-                            }),
-                        },
-                        Some(my_telemetry),
-                    )
-                    .await
-                    .unwrap();
+                sb_event = Some(AccountPersistEvent {
+                    add_account_event: None,
+                    // update_account_event: Some(account.clone().into()),
+                    update_account_event: Some(AccountBalanceUpdateSbModel {
+                        account_after_update: Some(account.clone().into()),
+                        operation: Some(balance_operation),
+                    }),
+                });
 
                 AccountManagerUpdateAccountBalanceGrpcResponse {
                     result: 0,
                     update_balance_info: Some(AccountManagerUpdateBalanceBalanceGrpcInfo {
                         account: Some(account.into()),
-                        operation_id: transaction_id,
+                        operation_id: transaction_id.clone(),
                     }),
                 }
             }
@@ -230,6 +227,26 @@ impl AccountsManagerGrpcService for GrpcService {
                 update_balance_info: None,
             },
         };
+
+        trade_log::trade_log!(
+            &request.trader_id,
+            &request.account_id,
+            &request.process_id,
+            &transaction_id,
+            "Got update balance request.",
+            my_telemetry.clone(),
+            "request" = &request,
+            "response" = &response,
+            "sb_event" = &sb_event
+        );
+
+        if let Some(sb) = sb_event {
+            self.app
+                .account_persist_events_publisher
+                .publish(&sb, Some(my_telemetry))
+                .await
+                .unwrap();
+        }
 
         Ok(tonic::Response::new(response))
     }
@@ -253,6 +270,15 @@ impl AccountsManagerGrpcService for GrpcService {
             )
             .await;
 
+        trade_log::trade_log!(
+            &request.trader_id,
+            &request.account_id,
+            &request.process_id,
+            "",
+            "Got update trading disabled request.",
+            my_telemetry.clone(),
+            "request" = &request
+        );
         let response = match update_balance_result {
             Ok(account) => {
                 self.app
@@ -301,6 +327,16 @@ impl AccountsManagerGrpcService for GrpcService {
                 &request.process_id,
             )
             .await;
+
+        trade_log::trade_log!(
+            &request.trader_id,
+            &request.account_id,
+            &request.process_id,
+            "",
+            "Got update trading group request.",
+            my_telemetry.clone(),
+            "request" = &request
+        );
 
         let response = match update_balance_result {
             Ok(account) => {
@@ -362,7 +398,11 @@ impl AccountsManagerGrpcService for GrpcService {
         let request = request.into_inner();
         let result = self.app.accounts_cache.search(&request).await;
         let accounts = get_accounts_vector(result);
-        service_sdk::my_grpc_extensions::grpc_server::send_vec_to_stream(accounts, |x| x).await
+        service_sdk::my_grpc_extensions::grpc_server::send_vec_to_stream(
+            accounts.into_iter(),
+            |x| x,
+        )
+        .await
     }
     async fn ping(&self, _: tonic::Request<()>) -> Result<tonic::Response<()>, tonic::Status> {
         Ok(tonic::Response::new(()))

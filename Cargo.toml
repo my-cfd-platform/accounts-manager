@@ -13,7 +13,7 @@ service-sdk = { git = "https://github.com/MyJetTools/service-sdk.git", tag = "0.
 ] }
 
 persist-queue = { tag = "0.1.4", git = "https://github.com/MyJetTools/persist-queue.git" }
-cfd-engine-sb-contracts = { tag = "0.2.1", git = "https://github.com/my-cfd-platform/cfd-engine-sb-contracts.git" }
+cfd-engine-sb-contracts = { tag = "0.2.5", git = "https://github.com/my-cfd-platform/cfd-engine-sb-contracts.git" }
 rust-extensions = { tag = "0.1.3", git = "https://github.com/MyJetTools/rust-extensions.git" }
 tokio = { version = "*", features = ["full"] }
 chrono = "*"
@@ -22,6 +22,6 @@ prost = "*"
 prost-types = "*"
 serde = "*"
 uuid = { version = "*", features = ["fast-rng", "v4", "macro-diagnostics"] }
-
+trade-log = { git = "https://github.com/MyJetTools/trade-log.git", tag = "0.1.1" }
 [build-dependencies]
 ci-utils = { git = "https://github.com/MyJetTools/ci-utils.git", tag = "0.1.0" }
