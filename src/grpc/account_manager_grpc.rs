@@ -18,7 +18,7 @@ use crate::{
     Account,
 };
 use cfd_engine_sb_contracts::{
-    AccountBalanceUpdateOperationSbModel, AccountBalanceUpdateSbModel, AccountPersistEvent,
+    AccountBalanceUpdateOperationSbModel, AccountBalanceUpdateSbModel, AccountPersistEvent, AccountBalanceUpdateOperationType,
 };
 use service_sdk::my_grpc_extensions::prelude::Stream;
 use tonic::{Request, Response, Status};
@@ -176,12 +176,13 @@ impl AccountsManagerGrpcService for GrpcService {
         let transaction_id = Uuid::new_v4().to_string();
 
         let reason: crate::accounts_manager::UpdateBalanceReason = request.reason();
+        let operation_type: AccountBalanceUpdateOperationType = reason.into();
 
         let balance_operation = AccountBalanceUpdateOperationSbModel {
             id: transaction_id.clone(),
             trader_id: request.trader_id.clone(),
             account_id: request.account_id.clone(),
-            operation_type: reason.into(),
+            operation_type: operation_type as i32,
             process_id: Some(request.process_id.clone()),
             delta: request.delta,
             date_time_unix_ms: chrono::offset::Utc::now().timestamp_millis() as u64,
