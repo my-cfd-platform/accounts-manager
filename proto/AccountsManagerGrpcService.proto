@@ -112,6 +112,10 @@ message AccountManagerGetTraderIdByAccountIdGrpcResponse{
     optional string TraderId = 1;
 }
 
+message AccountManagerGetAccountsByGroupGrpcRequest{
+    string TradingGroup = 1;
+}
+
 service AccountsManagerGrpcService {
     rpc CreateAccount(accounts_manager.AccountManagerCreateAccountGrpcRequest) returns (accounts_manager.AccountGrpcModel);
     rpc GetClientAccount(accounts_manager.AccountManagerGetClientAccountGrpcRequest) returns (accounts_manager.AccountManagerGetClientAccountGrpcResponse);
@@ -121,5 +125,6 @@ service AccountsManagerGrpcService {
     rpc UpdateClientAccountBalance(accounts_manager.AccountManagerUpdateAccountBalanceGrpcRequest) returns (accounts_manager.AccountManagerUpdateAccountBalanceGrpcResponse);
     rpc UpdateAccountTradingDisabled(accounts_manager.AccountManagerUpdateTradingDisabledGrpcRequest) returns (accounts_manager.AccountManagerUpdateTradingDisabledGrpcResponse);
     rpc UpdateAccountTradingGroup(accounts_manager.AccountManagerUpdateTradingGroupGrpcRequest) returns (accounts_manager.AccountManagerUpdateTradingDisabledGrpcResponse);
+    rpc GetTradingGroupAccounts(accounts_manager.AccountManagerGetAccountsByGroupGrpcRequest) returns (stream accounts_manager.AccountGrpcModel);
     rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
 }

@@ -1,7 +1,7 @@
 use std::{pin::Pin, vec};
 
 use crate::accounts_manager::{
-    AccountManagerGetTraderIdByAccountIdGrpcRequest,
+    AccountManagerGetAccountsByGroupGrpcRequest, AccountManagerGetTraderIdByAccountIdGrpcRequest,
     AccountManagerGetTraderIdByAccountIdGrpcResponse, AccountManagerUpdateTradingGroupGrpcRequest,
     SearchAccounts,
 };
@@ -18,7 +18,8 @@ use crate::{
     Account,
 };
 use cfd_engine_sb_contracts::{
-    AccountBalanceUpdateOperationSbModel, AccountBalanceUpdateSbModel, AccountPersistEvent, AccountBalanceUpdateOperationType,
+    AccountBalanceUpdateOperationSbModel, AccountBalanceUpdateOperationType,
+    AccountBalanceUpdateSbModel, AccountPersistEvent,
 };
 use service_sdk::my_grpc_extensions::prelude::Stream;
 use tonic::{Request, Response, Status};
@@ -31,6 +32,9 @@ use service_sdk::my_grpc_extensions::server::with_telemetry;
 #[tonic::async_trait]
 impl AccountsManagerGrpcService for GrpcService {
     type GetClientAccountsStream = Pin<
+        Box<dyn Stream<Item = Result<AccountGrpcModel, tonic::Status>> + Send + Sync + 'static>,
+    >;
+    type GetTradingGroupAccountsStream = Pin<
         Box<dyn Stream<Item = Result<AccountGrpcModel, tonic::Status>> + Send + Sync + 'static>,
     >;
 
@@ -161,6 +165,31 @@ impl AccountsManagerGrpcService for GrpcService {
         service_sdk::my_grpc_extensions::grpc_server::send_vec_to_stream(
             accounts.into_iter(),
             |x| x,
+        )
+        .await
+    }
+
+    #[with_telemetry]
+    async fn get_trading_group_accounts(
+        &self,
+        request: tonic::Request<AccountManagerGetAccountsByGroupGrpcRequest>,
+    ) -> Result<tonic::Response<Self::GetTradingGroupAccountsStream>, tonic::Status> {
+        let request = request.into_inner();
+        let AccountManagerGetAccountsByGroupGrpcRequest { trading_group } = request;
+        let accounts = self
+            .app
+            .accounts_cache
+            .get_accounts_by_trading_group(&trading_group)
+            .await;
+
+        let accounts = match accounts {
+            Some(accounts) => accounts,
+            None => vec![],
+        };
+
+        service_sdk::my_grpc_extensions::grpc_server::send_vec_to_stream(
+            accounts.into_iter(),
+            |x| x.into(),
         )
         .await
     }

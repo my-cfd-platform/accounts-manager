@@ -61,6 +61,19 @@ impl AccountsStore {
         return Some(trader_accounts.values().collect());
     }
 
+    pub fn get_accounts_by_trading_group(&self, group: &str) -> Option<Vec<&Account>> {
+        let mut result = vec![];
+
+        for (_, trader_accounts) in &self.accounts {
+            for account in trader_accounts.values() {
+                if account.trading_group == group {
+                    result.push(account);
+                }
+            }
+        }
+        return Some(result);
+    }
+
     pub fn search(&self, search: &SearchAccounts) -> Option<Vec<&Account>> {
         let traders_condition = search.trader_ids.len() > 0;
 
@@ -300,6 +313,15 @@ impl AccountsCache {
         }
 
         return Some(result);
+    }
+
+    pub async fn get_accounts_by_trading_group(&self, group: &str) -> Option<Vec<Account>> {
+        let accounts_store = self.accounts_store.read().await;
+
+        if let Some(accounts) = accounts_store.get_accounts_by_trading_group(group) {
+            return Some(accounts.iter().map(|x| x.to_owned().clone()).collect());
+        }
+        return None;
     }
 
     pub async fn search(&self, search: &SearchAccounts) -> Option<Vec<Account>> {
