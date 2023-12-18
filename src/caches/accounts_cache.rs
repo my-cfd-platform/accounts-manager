@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use tokio::sync::RwLock;
 
-use crate::accounts_manager::SearchAccounts;
+use crate::accounts_manager::{SearchAccounts, AccountsManagerOperationResult};
 use crate::Account;
 
 #[derive(Debug)]
@@ -15,9 +15,9 @@ pub enum OperationError {
 impl OperationError {
     pub fn as_grpc_error(&self) -> i32 {
         match self {
-            OperationError::TraderNotFound => 2,
-            OperationError::AccountNofFound => 1,
-            OperationError::NotEnoughBalance => 3,
+            OperationError::TraderNotFound => AccountsManagerOperationResult::TraderNotFound as i32,
+            OperationError::AccountNofFound => AccountsManagerOperationResult::AccountNotFound as i32,
+            OperationError::NotEnoughBalance => AccountsManagerOperationResult::NotEnoughBalance as i32,
         }
     }
 }
