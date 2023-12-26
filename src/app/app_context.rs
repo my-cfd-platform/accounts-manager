@@ -5,6 +5,7 @@ use service_sdk::my_service_bus::abstractions::publisher::MyServiceBusPublisher;
 use service_sdk::my_telemetry::MyTelemetryContext;
 use service_sdk::ServiceContext;
 
+use crate::accounts_manager_persistence::GetAllAccountsGrpcRequest;
 use crate::{AccountsCache, SettingsReader};
 
 use crate::grpc_client::AccountsManagerPersistenceGrpcClient;
@@ -26,6 +27,7 @@ impl AppContext {
 }
 
 async fn load_accounts(settings_reader: Arc<SettingsReader>) -> AccountsCache {
+    let settings = settings_reader.get_settings().await;
     let accounts_persistence_grpc =
         AccountsManagerPersistenceGrpcClient::new(settings_reader.clone());
 
@@ -33,7 +35,9 @@ async fn load_accounts(settings_reader: Arc<SettingsReader>) -> AccountsCache {
     telemetry.start_event_tracking("load_accounts");
 
     let accounts = accounts_persistence_grpc
-        .get_all_accounts((), &telemetry)
+        .get_all_accounts(GetAllAccountsGrpcRequest{
+            accounts_type: settings._type,
+        }, &telemetry)
         .await
         .unwrap();
 

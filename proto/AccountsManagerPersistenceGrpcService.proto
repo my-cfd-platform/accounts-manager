@@ -15,7 +15,11 @@ message PersistenceAccountGrpcModel{
     string LastUpdateProcessId = 10;
 }
 
+message GetAllAccountsGrpcRequest{
+    string AccountsType = 1;
+}
+
 service AccountsManagerPersistenceGrpcService {
-    rpc GetAllAccounts(google.protobuf.Empty) returns (stream accounts_manager_persistence.PersistenceAccountGrpcModel);
+    rpc GetAllAccounts(GetAllAccountsGrpcRequest) returns (stream accounts_manager_persistence.PersistenceAccountGrpcModel);
     rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
