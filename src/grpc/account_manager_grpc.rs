@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::{pin::Pin, vec};
 
 use crate::accounts_manager::{
@@ -78,11 +79,12 @@ impl AccountsManagerGrpcService for GrpcService {
 
         self.app
             .account_persist_events_publisher
-            .publish(
+            .publish_with_headers(
                 &AccountPersistEvent {
                     add_account_event: Some(account.clone().into()),
                     update_account_event: None,
                 },
+                HashMap::from_iter(vec![("type".to_string(), self.app.settings_reader.get_env_type().await)]),
                 Some(my_telemetry),
             )
             .await
@@ -273,7 +275,9 @@ impl AccountsManagerGrpcService for GrpcService {
         if let Some(sb) = sb_event {
             self.app
                 .account_persist_events_publisher
-                .publish(&sb, Some(my_telemetry))
+                .publish_with_headers(&sb,
+                    HashMap::from_iter(vec![("type".to_string(), self.app.settings_reader.get_env_type().await)]), 
+                    Some(my_telemetry))
                 .await
                 .unwrap();
         }
@@ -313,7 +317,7 @@ impl AccountsManagerGrpcService for GrpcService {
             Ok(account) => {
                 self.app
                     .account_persist_events_publisher
-                    .publish(
+                    .publish_with_headers(
                         &AccountPersistEvent {
                             add_account_event: None,
                             update_account_event: Some(AccountBalanceUpdateSbModel {
@@ -321,6 +325,7 @@ impl AccountsManagerGrpcService for GrpcService {
                                 operation: None,
                             }),
                         },
+                        HashMap::from_iter(vec![("type".to_string(), self.app.settings_reader.get_env_type().await)]),
                         Some(my_telemetry),
                     )
                     .await
@@ -372,7 +377,7 @@ impl AccountsManagerGrpcService for GrpcService {
             Ok(account) => {
                 self.app
                     .account_persist_events_publisher
-                    .publish(
+                    .publish_with_headers(
                         &AccountPersistEvent {
                             add_account_event: None,
                             update_account_event: Some(AccountBalanceUpdateSbModel {
@@ -380,6 +385,7 @@ impl AccountsManagerGrpcService for GrpcService {
                                 operation: None,
                             }),
                         },
+                        HashMap::from_iter(vec![("type".to_string(), self.app.settings_reader.get_env_type().await)]),
                         Some(my_telemetry),
                     )
                     .await

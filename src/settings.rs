@@ -20,6 +20,7 @@ pub struct SettingsModel {
     pub accounts_default_currency: Option<String>,
     pub my_telemetry: String,
     pub seq_conn_string: String,
+    pub _type: String,
 }
 
 impl SettingsReader {
@@ -34,6 +35,11 @@ impl SettingsReader {
     pub async fn get_accounts_default_currency(&self) -> Option<String> {
         let read_access = self.settings.read().await;
         return read_access.accounts_default_currency.clone();
+    }
+
+    pub async fn get_env_type(&self) -> String {
+        let read_access = self.get_settings().await;
+        return read_access._type.clone();
     }
 }
 
