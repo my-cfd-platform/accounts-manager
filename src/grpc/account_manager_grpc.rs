@@ -23,6 +23,7 @@ use cfd_engine_sb_contracts::{
     AccountBalanceUpdateSbModel, AccountPersistEvent,
 };
 use service_sdk::my_grpc_extensions::prelude::Stream;
+use service_sdk::my_service_bus::abstractions::SbMessageHeaders;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
@@ -84,7 +85,7 @@ impl AccountsManagerGrpcService for GrpcService {
                     add_account_event: Some(account.clone().into()),
                     update_account_event: None,
                 },
-                HashMap::from_iter(vec![("type".to_string(), self.app.settings_reader.get_env_type().await)]),
+                vec![("type".to_string(), self.app.settings_reader.get_env_type().await)].into(),
                 Some(my_telemetry),
             )
             .await
@@ -280,7 +281,7 @@ impl AccountsManagerGrpcService for GrpcService {
             self.app
                 .account_persist_events_publisher
                 .publish_with_headers(&sb,
-                    HashMap::from_iter(vec![("type".to_string(), self.app.settings_reader.get_env_type().await)]), 
+                    vec![("type".to_string(), self.app.settings_reader.get_env_type().await)].into(), 
                     Some(my_telemetry))
                 .await
                 .unwrap();
@@ -331,7 +332,7 @@ impl AccountsManagerGrpcService for GrpcService {
                                 operation: None,
                             }),
                         },
-                        HashMap::from_iter(vec![("type".to_string(), self.app.settings_reader.get_env_type().await)]),
+                        vec![("type".to_string(), self.app.settings_reader.get_env_type().await)].into(),
                         Some(my_telemetry),
                     )
                     .await
@@ -391,7 +392,7 @@ impl AccountsManagerGrpcService for GrpcService {
                                 operation: None,
                             }),
                         },
-                        HashMap::from_iter(vec![("type".to_string(), self.app.settings_reader.get_env_type().await)]),
+                        vec![("type".to_string(), self.app.settings_reader.get_env_type().await)].into(),
                         Some(my_telemetry),
                     )
                     .await
