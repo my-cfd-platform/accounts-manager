@@ -204,6 +204,10 @@ impl AccountsManagerGrpcService for GrpcService {
     {
         println!("Balance update request: {:?}", request);
         let request = request.into_inner();
+
+        if let Some(response) = self.app.cache.get(&request.process_id).await  {
+            return Ok(tonic::Response::new(response));
+        }
         let transaction_id = Uuid::new_v4().to_string();
 
         let reason: crate::accounts_manager::UpdateBalanceReason = request.reason();
@@ -281,6 +285,8 @@ impl AccountsManagerGrpcService for GrpcService {
                 .await
                 .unwrap();
         }
+
+        self.app.cache.set(&request.process_id, response.clone()).await;
 
         Ok(tonic::Response::new(response))
     }

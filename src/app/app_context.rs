@@ -5,14 +5,16 @@ use service_sdk::my_service_bus::abstractions::publisher::MyServiceBusPublisher;
 use service_sdk::my_telemetry::MyTelemetryContext;
 use service_sdk::ServiceContext;
 
+use crate::accounts_manager::AccountManagerUpdateAccountBalanceGrpcResponse;
 use crate::accounts_manager_persistence::GetAllAccountsGrpcRequest;
-use crate::{AccountsCache, SettingsReader};
+use crate::{AccountsCache, ProcessIdCache, SettingsReader};
 
 use crate::grpc_client::AccountsManagerPersistenceGrpcClient;
 pub struct AppContext {
     pub accounts_cache: Arc<AccountsCache>,
     pub settings_reader: Arc<SettingsReader>,
     pub account_persist_events_publisher: MyServiceBusPublisher<AccountPersistEvent>,
+    pub cache: ProcessIdCache<AccountManagerUpdateAccountBalanceGrpcResponse>
 }
 
 impl AppContext {
@@ -22,6 +24,7 @@ impl AppContext {
             accounts_cache: Arc::new(load_accounts(settings_reader.clone()).await),
             settings_reader,
             account_persist_events_publisher,
+            cache: ProcessIdCache::new()
         }
     }
 }
