@@ -1,11 +1,11 @@
-use std::collections::HashMap;
 use std::{pin::Pin, vec};
 
 use crate::accounts_manager::{
     AccountManagerGetAccountsByGroupGrpcRequest, AccountManagerGetTraderIdByAccountIdGrpcRequest,
     AccountManagerGetTraderIdByAccountIdGrpcResponse, AccountManagerUpdateTradingGroupGrpcRequest,
-    SearchAccounts,
+    AccountsManagerOperationResult, SearchAccounts,
 };
+use crate::update_balance;
 use crate::{
     accounts_manager::{
         accounts_manager_grpc_service_server::AccountsManagerGrpcService, AccountGrpcModel,
@@ -19,11 +19,9 @@ use crate::{
     Account,
 };
 use cfd_engine_sb_contracts::{
-    AccountBalanceUpdateOperationSbModel, AccountBalanceUpdateOperationType,
     AccountBalanceUpdateSbModel, AccountPersistEvent,
 };
 use service_sdk::my_grpc_extensions::prelude::Stream;
-use service_sdk::my_service_bus::abstractions::SbMessageHeaders;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
@@ -85,7 +83,11 @@ impl AccountsManagerGrpcService for GrpcService {
                     add_account_event: Some(account.clone().into()),
                     update_account_event: None,
                 },
-                vec![("type".to_string(), self.app.settings_reader.get_env_type().await)].into(),
+                vec![(
+                    "type".to_string(),
+                    self.app.settings_reader.get_env_type().await,
+                )]
+                .into(),
                 Some(my_telemetry),
             )
             .await
@@ -100,29 +102,18 @@ impl AccountsManagerGrpcService for GrpcService {
         request: tonic::Request<AccountManagerGetClientAccountGrpcRequest>,
     ) -> Result<tonic::Response<AccountManagerGetClientAccountGrpcResponse>, tonic::Status> {
         let request = request.into_inner();
-
         let AccountManagerGetClientAccountGrpcRequest {
             trader_id,
             account_id,
         } = request;
+
         let account = self
             .app
             .accounts_cache
             .get_account(&trader_id, &account_id)
             .await;
 
-        let response = match account {
-            Some(account) => tonic::Response::new(AccountManagerGetClientAccountGrpcResponse {
-                result: 0,
-                account: Some(account.into()),
-            }),
-            None => tonic::Response::new(AccountManagerGetClientAccountGrpcResponse {
-                result: 1,
-                account: None,
-            }),
-        };
-
-        Ok(response)
+        return Ok(tonic::Response::new(account.into()));
     }
 
     #[with_telemetry]
@@ -132,23 +123,29 @@ impl AccountsManagerGrpcService for GrpcService {
     ) -> Result<tonic::Response<Self::GetClientAccountsStream>, tonic::Status> {
         let request = request.into_inner();
         let AccountManagerGetClientAccountsGrpcRequest { trader_id } = request;
-        let accounts = self.app.accounts_cache.get_accounts(&trader_id).await;
+        let accounts = self
+            .app
+            .accounts_cache
+            .get_accounts(&trader_id)
+            .await
+            .map(|x| {
+                x.into_iter()
+                    .map(|acc| acc.into())
+                    .collect::<Vec<AccountGrpcModel>>()
+            });
 
-        let accounts = match accounts {
-            Some(accounts) => accounts
-                .iter()
-                .map(|x| x.to_owned().into())
-                .collect::<Vec<AccountGrpcModel>>(),
-            None => match &self
-                .app
-                .settings_reader
-                .get_accounts_default_currency()
-                .await
-            {
-                Some(currency) => {
+        let accounts_to_send = match accounts {
+            Some(accounts) => accounts,
+            None => {
+                if let Some(def_currency) = self
+                    .app
+                    .settings_reader
+                    .get_accounts_default_currency()
+                    .await
+                {
                     let request = AccountManagerCreateAccountGrpcRequest {
                         trader_id: trader_id.clone(),
-                        currency: currency.clone(),
+                        currency: def_currency.clone(),
                         process_id: Uuid::new_v4().to_string(),
                         trading_group_id: None,
                     };
@@ -159,17 +156,18 @@ impl AccountsManagerGrpcService for GrpcService {
                         .unwrap()
                         .into_inner();
 
-                    vec![account.into()]
+                    vec![account]
+                } else {
+                    vec![]
                 }
-                None => vec![],
-            },
+            }
         };
 
-        service_sdk::my_grpc_extensions::grpc_server::send_vec_to_stream(
-            accounts.into_iter(),
+        return service_sdk::my_grpc_extensions::grpc_server::send_vec_to_stream(
+            accounts_to_send.into_iter(),
             |x| x,
         )
-        .await
+        .await;
     }
 
     #[with_telemetry]
@@ -203,67 +201,8 @@ impl AccountsManagerGrpcService for GrpcService {
         request: tonic::Request<AccountManagerUpdateAccountBalanceGrpcRequest>,
     ) -> Result<tonic::Response<AccountManagerUpdateAccountBalanceGrpcResponse>, tonic::Status>
     {
-        println!("Balance update request: {:?}", request);
         let request = request.into_inner();
-
-        if let Some(response) = self.app.cache.get(&request.process_id).await  {
-            return Ok(tonic::Response::new(response));
-        }
         let transaction_id = Uuid::new_v4().to_string();
-
-        let reason: crate::accounts_manager::UpdateBalanceReason = request.reason();
-        let operation_type: AccountBalanceUpdateOperationType = reason.into();
-
-        let balance_operation = AccountBalanceUpdateOperationSbModel {
-            id: transaction_id.clone(),
-            trader_id: request.trader_id.clone(),
-            account_id: request.account_id.clone(),
-            operation_type: operation_type as i32,
-            process_id: Some(request.process_id.clone()),
-            delta: request.delta,
-            date_time_unix_ms: chrono::offset::Utc::now().timestamp_millis() as u64,
-            comment: Some(request.comment.clone()),
-            reference_operation_id: request.reference_transaction_id.clone(),
-        };
-
-        let update_balance_result = self
-            .app
-            .accounts_cache
-            .update_balance(
-                &request.trader_id,
-                &request.account_id,
-                request.delta,
-                &request.process_id,
-                request.allow_negative_balance,
-            )
-            .await;
-
-        let mut sb_event = None;
-
-        let response = match update_balance_result {
-            Ok(account) => {
-                sb_event = Some(AccountPersistEvent {
-                    add_account_event: None,
-                    // update_account_event: Some(account.clone().into()),
-                    update_account_event: Some(AccountBalanceUpdateSbModel {
-                        account_after_update: Some(account.clone().into()),
-                        operation: Some(balance_operation),
-                    }),
-                });
-
-                AccountManagerUpdateAccountBalanceGrpcResponse {
-                    result: 0,
-                    update_balance_info: Some(AccountManagerUpdateBalanceBalanceGrpcInfo {
-                        account: Some(account.into()),
-                        operation_id: transaction_id.clone(),
-                    }),
-                }
-            }
-            Err(error) => AccountManagerUpdateAccountBalanceGrpcResponse {
-                result: error.as_grpc_error(),
-                update_balance_info: None,
-            },
-        };
 
         trade_log::trade_log!(
             &request.trader_id,
@@ -272,22 +211,61 @@ impl AccountsManagerGrpcService for GrpcService {
             &transaction_id,
             "Got update balance request.",
             my_telemetry.clone(),
-            "request" = &request,
-            "response" = &response,
-            "sb_event" = &sb_event
+            "request" = &request
         );
 
-        if let Some(sb) = sb_event {
-            self.app
-                .account_persist_events_publisher
-                .publish_with_headers(&sb,
-                    vec![("type".to_string(), self.app.settings_reader.get_env_type().await)].into(), 
-                    Some(my_telemetry))
-                .await
-                .unwrap();
+        if let Some(response) = self.app.cache.get(&request.process_id).await {
+            trade_log::trade_log!(
+                &request.trader_id,
+                &request.account_id,
+                &request.process_id,
+                &transaction_id,
+                "Found request with same process id - returning error.",
+                my_telemetry.clone(),
+                "request" = &request,
+                "previous_response" = &response
+            );
+
+            return Ok(tonic::Response::new(
+                AccountManagerUpdateAccountBalanceGrpcResponse {
+                    result: AccountsManagerOperationResult::ProcessIdDuplicate as i32,
+                    update_balance_info: None,
+                },
+            ));
         }
 
-        self.app.cache.set(&request.process_id, response.clone()).await;
+        let update_balance_result =
+            update_balance(&self.app, &request, transaction_id.clone(), &my_telemetry).await;
+
+        trade_log::trade_log!(
+            &request.trader_id,
+            &request.account_id,
+            &request.process_id,
+            &transaction_id,
+            "Executed update balance request.",
+            my_telemetry.clone(),
+            "request" = &request,
+            "result" = &update_balance_result
+        );
+
+        let response = match update_balance_result{
+            Ok(account) => AccountManagerUpdateAccountBalanceGrpcResponse {
+                result: 0,
+                update_balance_info: Some(AccountManagerUpdateBalanceBalanceGrpcInfo {
+                    account: Some(account.into()),
+                    operation_id: transaction_id.clone(),
+                }),
+            },
+            Err(error) => AccountManagerUpdateAccountBalanceGrpcResponse {
+                result: error.as_grpc_error(),
+                update_balance_info: None,
+            },
+        };
+
+        self.app
+            .cache
+            .set(&request.process_id, response.clone())
+            .await;
 
         Ok(tonic::Response::new(response))
     }
@@ -332,7 +310,11 @@ impl AccountsManagerGrpcService for GrpcService {
                                 operation: None,
                             }),
                         },
-                        vec![("type".to_string(), self.app.settings_reader.get_env_type().await)].into(),
+                        vec![(
+                            "type".to_string(),
+                            self.app.settings_reader.get_env_type().await,
+                        )]
+                        .into(),
                         Some(my_telemetry),
                     )
                     .await
@@ -392,7 +374,11 @@ impl AccountsManagerGrpcService for GrpcService {
                                 operation: None,
                             }),
                         },
-                        vec![("type".to_string(), self.app.settings_reader.get_env_type().await)].into(),
+                        vec![(
+                            "type".to_string(),
+                            self.app.settings_reader.get_env_type().await,
+                        )]
+                        .into(),
                         Some(my_telemetry),
                     )
                     .await

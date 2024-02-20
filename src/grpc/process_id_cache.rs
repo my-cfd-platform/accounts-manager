@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use serde::{de::DeserializeOwned, Serialize};
 use tokio::sync::Mutex;
 
 pub struct ProcessIdCache<T: Clone> {

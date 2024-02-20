@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
 use crate::accounts_manager::{SearchAccounts, AccountsManagerOperationResult};
 use crate::Account;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum OperationError {
     TraderNotFound,
     AccountNofFound,

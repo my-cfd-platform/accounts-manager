@@ -7,6 +7,7 @@ enum AccountsManagerOperationResult{
     AccountNotFound = 1;
     TraderNotFound = 2;
     NotEnoughBalance = 3;
+    ProcessIdDuplicate = 4;
 }
 
 enum UpdateBalanceReason {
