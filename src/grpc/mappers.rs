@@ -1,7 +1,10 @@
 use cfd_engine_sb_contracts::AccountBalanceUpdateOperationType;
 
 use crate::{
-    accounts_manager::{AccountManagerGetClientAccountGrpcResponse, AccountsManagerOperationResult, UpdateBalanceReason},
+    accounts_manager::{
+        AccountManagerGetClientAccountGrpcResponse, AccountsManagerOperationResult,
+        UpdateBalanceReason,
+    },
     Account,
 };
 
@@ -17,6 +20,7 @@ impl Into<AccountBalanceUpdateOperationType> for UpdateBalanceReason {
             UpdateBalanceReason::WithdrawalCanceled => {
                 AccountBalanceUpdateOperationType::Withdrawal
             }
+            UpdateBalanceReason::ToppingUp => AccountBalanceUpdateOperationType::ToppingUp,
         }
     }
 }
@@ -35,4 +39,3 @@ impl Into<AccountManagerGetClientAccountGrpcResponse> for Option<Account> {
         }
     }
 }
-

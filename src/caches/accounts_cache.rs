@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
-use crate::accounts_manager::{SearchAccounts, AccountsManagerOperationResult};
+use crate::accounts_manager::{AccountsManagerOperationResult, SearchAccounts};
 use crate::Account;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -17,8 +17,12 @@ impl OperationError {
     pub fn as_grpc_error(&self) -> i32 {
         match self {
             OperationError::TraderNotFound => AccountsManagerOperationResult::TraderNotFound as i32,
-            OperationError::AccountNofFound => AccountsManagerOperationResult::AccountNotFound as i32,
-            OperationError::NotEnoughBalance => AccountsManagerOperationResult::NotEnoughBalance as i32,
+            OperationError::AccountNofFound => {
+                AccountsManagerOperationResult::AccountNotFound as i32
+            }
+            OperationError::NotEnoughBalance => {
+                AccountsManagerOperationResult::NotEnoughBalance as i32
+            }
         }
     }
 }
@@ -29,6 +33,7 @@ pub struct AccountsStore {
 
 impl AccountsStore {
     pub fn new(accounts: Vec<Account>) -> Self {
+        let accounts_len = accounts.len();
         let mut accounts_cache = HashMap::new();
 
         for account in accounts {
@@ -37,6 +42,8 @@ impl AccountsStore {
                 .or_insert(HashMap::new())
                 .insert(account.id.clone(), account);
         }
+
+        service_sdk::metrics::gauge!("accounts_in_cache").set(accounts_len as f64);
 
         Self {
             accounts: accounts_cache,
@@ -345,6 +352,7 @@ impl AccountsCache {
 
     pub async fn add_account(&self, account: Account) -> Account {
         let mut accounts_store = self.accounts_store.write().await;
+        service_sdk::metrics::gauge!("accounts_in_cache").increment(1);
         return accounts_store.add_account(account);
     }
 

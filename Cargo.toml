@@ -13,7 +13,7 @@ service-sdk = { git = "https://github.com/MyJetTools/service-sdk.git", tag = "0.
 ] }
 
 persist-queue = { tag = "0.1.4", git = "https://github.com/MyJetTools/persist-queue.git" }
-cfd-engine-sb-contracts = { tag = "0.2.8", git = "https://github.com/my-cfd-platform/cfd-engine-sb-contracts.git" }
+cfd-engine-sb-contracts = { tag = "0.2.14", git = "https://github.com/my-cfd-platform/cfd-engine-sb-contracts.git" }
 
 tokio = { version = "*", features = ["full"] }
 chrono = "*"
