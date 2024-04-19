@@ -48,6 +48,7 @@ message AccountManagerUpdateAccountBalanceGrpcRequest{
      bool AllowNegativeBalance = 6;
      UpdateBalanceReason Reason = 7;
      optional string ReferenceTransactionId = 8;
+     bool SameResponseProcessId = 9;
 }
 
 message AccountManagerGetTraderIdByAccountIdGrpcRequest{
