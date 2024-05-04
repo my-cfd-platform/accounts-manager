@@ -13,6 +13,12 @@ message PersistenceAccountGrpcModel{
     string CreateProcessId = 8;
     string TradingGroup = 9;
     string LastUpdateProcessId = 10;
+    repeated AccountMetadataItemGrpcModel Metadata = 11; 
+}
+
+message AccountMetadataItemGrpcModel{
+    string Key = 1;
+    string Value = 2;
 }
 
 message GetAllAccountsGrpcRequest{
@@ -20,6 +26,6 @@ message GetAllAccountsGrpcRequest{
 }
 
 service AccountsManagerPersistenceGrpcService {
-    rpc GetAllAccounts(GetAllAccountsGrpcRequest) returns (stream accounts_manager_persistence.PersistenceAccountGrpcModel);
+    rpc GetAllAccounts(GetAllAccountsGrpcRequest) returns (stream PersistenceAccountGrpcModel);
     rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
 }

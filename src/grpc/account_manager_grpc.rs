@@ -18,9 +18,7 @@ use crate::{
     },
     Account,
 };
-use cfd_engine_sb_contracts::{
-    AccountBalanceUpdateSbModel, AccountPersistEvent,
-};
+use cfd_engine_sb_contracts::{AccountBalanceUpdateSbModel, AccountPersistEvent};
 use service_sdk::my_grpc_extensions::prelude::Stream;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
@@ -68,6 +66,7 @@ impl AccountsManagerGrpcService for GrpcService {
             last_update_process_id: request.process_id.clone(),
             create_process_id: request.process_id.clone(),
             trading_group: tg,
+            metadata: request.metadata,
         };
 
         let account = self
@@ -148,6 +147,7 @@ impl AccountsManagerGrpcService for GrpcService {
                         currency: def_currency.clone(),
                         process_id: Uuid::new_v4().to_string(),
                         trading_group_id: None,
+                        metadata: vec![],
                     };
 
                     let account = self
@@ -248,7 +248,7 @@ impl AccountsManagerGrpcService for GrpcService {
             "result" = &update_balance_result
         );
 
-        let response = match update_balance_result{
+        let response = match update_balance_result {
             Ok(account) => AccountManagerUpdateAccountBalanceGrpcResponse {
                 result: 0,
                 update_balance_info: Some(AccountManagerUpdateBalanceBalanceGrpcInfo {

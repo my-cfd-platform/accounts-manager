@@ -2,7 +2,8 @@ use cfd_engine_sb_contracts::AccountSbModel;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    accounts_manager::AccountGrpcModel, accounts_manager_persistence::PersistenceAccountGrpcModel,
+    accounts_manager::{AccountGrpcModel, AccountMetadataItemGrpcModel},
+    accounts_manager_persistence::PersistenceAccountGrpcModel,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -17,6 +18,7 @@ pub struct Account {
     pub trading_disabled: bool,
     pub create_process_id: String,
     pub trading_group: String,
+    pub metadata: Vec<AccountMetadataItemGrpcModel>,
 }
 
 impl Into<AccountGrpcModel> for Account {
@@ -32,11 +34,10 @@ impl Into<AccountGrpcModel> for Account {
             create_process_id: self.create_process_id,
             trading_group: self.trading_group,
             last_update_process_id: self.last_update_process_id,
+            metadata: self.metadata,
         }
     }
 }
-
-
 
 impl Into<Account> for PersistenceAccountGrpcModel {
     fn into(self) -> Account {
@@ -51,6 +52,14 @@ impl Into<Account> for PersistenceAccountGrpcModel {
             trading_disabled: self.trading_disabled,
             create_process_id: self.create_process_id,
             trading_group: self.trading_group,
+            metadata: self
+                .metadata
+                .into_iter()
+                .map(|x| AccountMetadataItemGrpcModel {
+                    key: x.key,
+                    value: x.value,
+                })
+                .collect(),
         }
     }
 }
