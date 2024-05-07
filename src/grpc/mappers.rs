@@ -12,15 +12,15 @@ impl Into<AccountBalanceUpdateOperationType> for UpdateBalanceReason {
     fn into(self) -> AccountBalanceUpdateOperationType {
         match self {
             UpdateBalanceReason::TradingResult => AccountBalanceUpdateOperationType::Trading,
-            UpdateBalanceReason::BalanceCorrection => {
-                AccountBalanceUpdateOperationType::BalanceCorrection
-            }
+            UpdateBalanceReason::BalanceCorrection => AccountBalanceUpdateOperationType::BalanceCorrection,
             UpdateBalanceReason::Deposit => AccountBalanceUpdateOperationType::Deposit,
             UpdateBalanceReason::Withdrawal => AccountBalanceUpdateOperationType::Withdrawal,
-            UpdateBalanceReason::WithdrawalCanceled => {
-                AccountBalanceUpdateOperationType::Withdrawal
-            }
+            UpdateBalanceReason::WithdrawalCanceled => AccountBalanceUpdateOperationType::WithdrawalCanceled,
             UpdateBalanceReason::ToppingUp => AccountBalanceUpdateOperationType::ToppingUp,
+            UpdateBalanceReason::Dividends => AccountBalanceUpdateOperationType::Dividends,
+            UpdateBalanceReason::Bonus => AccountBalanceUpdateOperationType::Bonus,
+            UpdateBalanceReason::Credit => AccountBalanceUpdateOperationType::Credit,
+            UpdateBalanceReason::Voucher => AccountBalanceUpdateOperationType::Voucher,
         }
     }
 }

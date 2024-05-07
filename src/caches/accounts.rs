@@ -1,4 +1,4 @@
-use cfd_engine_sb_contracts::AccountSbModel;
+use cfd_engine_sb_contracts::{AccountSbMetadataModel, AccountSbModel};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -77,6 +77,14 @@ impl Into<AccountSbModel> for Account {
             create_process_id: self.create_process_id,
             trading_group: self.trading_group,
             last_update_process_id: self.last_update_process_id,
+            metadata: self
+                .metadata
+                .into_iter()
+                .map(|x| AccountSbMetadataModel {
+                    key: x.key,
+                    value: x.value,
+                })
+                .collect(),
         }
     }
 }
